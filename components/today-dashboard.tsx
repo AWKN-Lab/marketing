@@ -1,17 +1,40 @@
+"use client";
+
 import Link from "next/link";
-import { todayItems, signals, recentEvolution } from "@/lib/mock-data";
+import { EVOLUTION_REVIEWS_KEY, LOCAL_CANDIDATES_KEY, type LocalEvolutionCandidate } from "@/lib/evolution-store";
+import { recentEvolution, signals, todayItems } from "@/lib/mock-data";
+import { LOCAL_TASKS_KEY } from "@/lib/task-store";
+import type { MarketingTask } from "@/lib/types";
+import { usePersistedState } from "@/lib/use-persisted-state";
+import { LOCAL_WORKSPACES_KEY, type LocalWorkspace } from "@/lib/workspace-store";
 
 export function TodayDashboard() {
-  return (
-    <main className="page stack-xl">
-      <header className="hero"><div><p className="eyebrow">WED · 02 SEP</p><h1>今天值得推进什么</h1><p className="muted">聚合任务、变化、待确认与最近学会的方法。</p></div><Link className="button primary" href="/tasks/task-001">开始新任务</Link></header>
-      <section className="priority-list">
-        {todayItems.map((item, index) => <Link className="priority-card" href={item.href} key={item.title}><span className="priority-index">0{index + 1}</span><div className="grow"><p className="eyebrow">{item.workspace}</p><h2>{item.title}</h2><p>{item.reason}</p></div><span className={`priority ${item.level}`}>{item.label}</span></Link>)}
-      </section>
-      <section className="two-col">
-        <div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">SIGNALS</p><h2>新变化</h2></div><span className="count">{signals.length}</span></div>{signals.map(s => <article className="signal-row" key={s.title}><span className="signal-time">{s.time}</span><div><strong>{s.title}</strong><p>{s.impact}</p><small>{s.source}</small></div></article>)}</div>
-        <div className="panel evolution-card"><p className="eyebrow">RECENT EVOLUTION</p><h2>最近学会</h2><p className="evolution-quote">“{recentEvolution.lesson}”</p><p>{recentEvolution.evidence}</p><div className="row gap-sm"><Link className="button secondary" href="/evolution">查看依据</Link><button className="button ghost">接受</button></div></div>
-      </section>
-    </main>
-  );
+  const [localTasks] = usePersistedState<MarketingTask[]>(LOCAL_TASKS_KEY, []);
+  const [localWorkspaces] = usePersistedState<LocalWorkspace[]>(LOCAL_WORKSPACES_KEY, []);
+  const [localCandidates] = usePersistedState<LocalEvolutionCandidate[]>(LOCAL_CANDIDATES_KEY, []);
+  const [reviews] = usePersistedState<Record<string,string>>(EVOLUTION_REVIEWS_KEY, {});
+
+  const pendingCandidates = localCandidates.filter((candidate) => !reviews[candidate.id]);
+  const latestAccepted = localCandidates.find((candidate) => reviews[candidate.id] === "accepted" || reviews[candidate.id] === "scoped");
+  const localPriorities = localTasks.slice(0, 3).map((task) => ({ workspace: task.workspaceName, title: task.title, reason: `目标：${task.goal}`, level: "high", label: "继续任务", href: `/tasks/${task.id}` }));
+  const priorities = [...localPriorities, ...todayItems].slice(0, 5);
+
+  return <main className="page stack-xl">
+    <header className="hero"><div><p className="eyebrow">TODAY</p><h1>今天值得推进什么</h1><p className="muted">来自真实 Workspace、任务、待审核经验与最新变化。</p></div><Link className="button primary" href="/workspaces">进入 Workspace</Link></header>
+
+    <section className="today-stats">
+      <div><span className="label">本地 Workspace</span><strong>{localWorkspaces.length}</strong></div>
+      <div><span className="label">已创建任务</span><strong>{localTasks.length}</strong></div>
+      <div><span className="label">待审核经验</span><strong>{pendingCandidates.length}</strong></div>
+    </section>
+
+    {pendingCandidates.length > 0 && <Link className="attention-card" href="/evolution"><span className="pulse"/><div><strong>{pendingCandidates.length} 条经验等待你确认</strong><p>确认以后，后续新任务才会真正应用这些方法。</p></div><span>→</span></Link>}
+
+    <section className="priority-list">{priorities.map((item, index) => <Link className="priority-card" href={item.href} key={`${item.href}-${index}`}><span className="priority-index">0{index + 1}</span><div className="grow"><p className="eyebrow">{item.workspace}</p><h2>{item.title}</h2><p>{item.reason}</p></div><span className={`priority ${item.level}`}>{item.label}</span></Link>)}</section>
+
+    <section className="two-col">
+      <div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">SIGNALS</p><h2>新变化</h2></div><span className="count">{signals.length}</span></div>{signals.map((signal) => <article className="signal-row" key={signal.title}><span className="signal-time">{signal.time}</span><div><strong>{signal.title}</strong><p>{signal.impact}</p><small>{signal.source}</small></div></article>)}</div>
+      <div className="panel evolution-card"><p className="eyebrow">RECENT EVOLUTION</p><h2>{latestAccepted ? "最近确认的方法" : "最近学会"}</h2><p className="evolution-quote">“{latestAccepted?.lesson ?? recentEvolution.lesson}”</p><p>{latestAccepted?.why ?? recentEvolution.evidence}</p><div className="row gap-sm"><Link className="button secondary" href="/evolution">查看进化记录</Link></div></div>
+    </section>
+  </main>;
 }
