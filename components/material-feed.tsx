@@ -21,9 +21,9 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
   const [mode, setMode] = useState<"none" | "url" | "text">("none");
   const [message, setMessage] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
-  const materials = [
+  const materials: LocalMaterial[] = [
     ...added,
-    ...initialMaterials.map((item, index) => ({ ...item, id: `demo-${index}`, parseMode: "reference_only" as const, createdAt: "", status: item.status ?? "DEMO" })),
+    ...initialMaterials.map((item, index): LocalMaterial => ({ ...item, id: `demo-${index}`, parseMode: "reference_only", createdAt: "", status: item.status ?? "DEMO" })),
   ];
 
   function applyPlatformResult(materialId: string, result: MaterialPlatformResult) {

@@ -26,7 +26,7 @@ export function EvidenceDrawer({ compact = false, scopeId, taskId, includeDemo =
       title: `${material.title} · ${item.title}`,
       snippet: item.snippet,
       source: item.source,
-      time: item.time ?? material.createdAt || "AWKN parser",
+      time: item.time ?? (material.createdAt || "AWKN parser"),
       origin: "material" as const,
     }));
     const snippet = material.parseMode === "local_text" && material.content
