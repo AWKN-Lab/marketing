@@ -5,6 +5,7 @@ import {
   matchReviewedExperience,
 } from "../lib/evolution-store.ts";
 import { buildP0Metrics } from "../lib/eval.ts";
+import { buildP0Bundle, parseP0Bundle } from "../lib/p0-bundle.ts";
 import { parsePersistedValue, serializePersistedValue } from "../lib/persistence.ts";
 
 function candidate(input: { taskId: string; workspaceId: string; taskType: string; outcome: string; note?: string }) {
@@ -71,4 +72,10 @@ const versioned = serializePersistedValue({ hello: "v1" });
 assert.deepEqual(parsePersistedValue(versioned, {}), { hello: "v1" });
 assert.deepEqual(parsePersistedValue("broken-json", { safe: true }), { safe: true });
 
-console.log("P0 acceptance passed: evolution, eval and local-state compatibility are enforced.");
+const bundle = buildP0Bundle({ "marketing:task": "x", "unrelated:key": "secret" }, "2026-09-02T00:00:00.000Z");
+assert.deepEqual(bundle.entries, { "marketing:task": "x" });
+const parsedBundle = parseP0Bundle(JSON.stringify(bundle));
+assert.equal(parsedBundle.entries["marketing:task"], "x");
+assert.throws(() => parseP0Bundle(JSON.stringify({ format: "wrong", version: 1, entries: {} })));
+
+console.log("P0 acceptance passed: evolution, eval, persistence and data portability are enforced.");
