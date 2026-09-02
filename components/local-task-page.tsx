@@ -1,17 +1,3 @@
 "use client";
-
-import Link from "next/link";
-import { EntityReconcilePanel } from "@/components/entity-reconcile-panel";
-import { TaskWorkbench } from "@/components/task-workbench";
-import type { MarketingTask } from "@/lib/types";
-import { LOCAL_TASKS_KEY } from "@/lib/task-store";
-import { usePersistedState } from "@/lib/use-persisted-state";
-
-export function LocalTaskPage({ taskId }: { taskId: string }) {
-  const [tasks, setTasks, hydrated] = usePersistedState<MarketingTask[]>(LOCAL_TASKS_KEY, []);
-  if (!hydrated) return <main className="page"><div className="panel"><p className="muted">正在读取任务…</p></div></main>;
-  const task = tasks.find((item) => item.id === taskId);
-  if (!task) return <main className="page"><div className="panel stack-md"><h1>Task 未找到</h1><p className="muted">这条本地任务可能已被清理。</p><Link className="button secondary" href="/workspaces">返回 Workspace</Link></div></main>;
-  const reconcilePanel = <EntityReconcilePanel<MarketingTask> entityLabel="Task" entityKey={`task:${task.id}`} entityId={task.id} workspaceId={task.workspaceId} taskId={task.id} getOperation="task.get" updateOperation="task.update" localEntity={task} buildUpdatePayload={(entity, baseRevision) => ({ task: entity, base_revision: baseRevision })} onApplyPlatform={(remote) => setTasks((current) => current.map((item) => item.id === task.id ? { ...remote, id: item.id } : item))} />;
-  return <TaskWorkbench task={task} reconcilePanel={reconcilePanel} />;
-}
+import Link from "next/link"; import { EntityReconcilePanel } from "@/components/entity-reconcile-panel"; import { TaskWorkbench } from "@/components/task-workbench"; import { useProductSession } from "@/components/product-session-provider"; import { canMarketingAction } from "@/lib/product-session"; import type { MarketingTask } from "@/lib/types"; import { LOCAL_TASKS_KEY } from "@/lib/task-store"; import { usePersistedState } from "@/lib/use-persisted-state";
+export function LocalTaskPage({taskId}:{taskId:string}){const session=useProductSession();const[tasks,setTasks,hydrated]=usePersistedState<MarketingTask[]>(LOCAL_TASKS_KEY,[]);if(!hydrated)return <main className="page"><div className="panel"><p className="muted">正在读取任务…</p></div></main>;const task=tasks.find((item)=>item.id===taskId);if(!task)return <main className="page"><div className="panel stack-md"><h1>Task 未找到</h1><p className="muted">这条本地任务可能已被清理。</p><Link className="button secondary" href="/workspaces">返回 Workspace</Link></div></main>;const canRead=canMarketingAction(session,"workspace.read",task.workspaceId,"read");if(!canRead)return <main className="page"><div className="panel stack-md"><h1>没有 Task 访问权限</h1><p className="muted">当前 Session 无法读取这个 Task 所属 Workspace。</p><Link className="button secondary" href="/workspaces">返回 Workspace</Link></div></main>;const canWrite=canMarketingAction(session,"workspace.write",task.workspaceId,"write");const reconcilePanel=<EntityReconcilePanel<MarketingTask> entityLabel="Task" entityKey={`task:${task.id}`} entityId={task.id} workspaceId={task.workspaceId} taskId={task.id} getOperation="task.get" updateOperation="task.update" localEntity={task} canRead={canRead} canWrite={canWrite} buildUpdatePayload={(entity,baseRevision)=>({task:entity,base_revision:baseRevision})} onApplyPlatform={(remote)=>setTasks((current)=>current.map((item)=>item.id===task.id?{...remote,id:item.id}:item))}/>;return <TaskWorkbench task={task} reconcilePanel={reconcilePanel}/>;}
