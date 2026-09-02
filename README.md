@@ -20,7 +20,11 @@
 - 基线：`64586eef33a0c72318f367b4268be3e0bac59bef`
 - GitHub Actions Run：`33623356240`
 
-全部基线均通过：
+### P4 Learning 基线｜DEVELOPMENT_VERIFIED
+- 基线：`31ff83a5b2baed9d3cb1df0e19eb93098b580fb7`
+- GitHub Actions Run：`33623799799`
+
+全部已验证基线均通过：
 
 ```text
 npm run typecheck  ✓
@@ -28,9 +32,11 @@ npm run test:p0    ✓
 npm run build      ✓
 ```
 
+P5 Session / Tenant Isolation 正在开发验证中。
+
 ---
 
-## P0 主闭环
+## 核心产品闭环
 
 ```text
 Workspace
@@ -46,9 +52,7 @@ Workspace
 → Next Task Reuse
 ```
 
-同时包含：Daily Learning、真实 Signal 回流、Local-first Sync、Product Eval、P0 数据导出/导入、Demo/真实数据隔离。
-
-## P1 Material
+### P1 Material
 
 ```text
 稳定 material_id
@@ -62,23 +66,13 @@ Workspace
 → Agent Context / Evidence Drawer
 ```
 
-## P2 Platform Reconcile
+### P2 Platform Reconcile
 
-Workspace / Task 支持产品层状态读回与 revision 冲突检测：
+Workspace / Task 支持产品层状态读回与 revision 冲突检测。平台状态不会静默覆盖本地状态。
 
-```text
-本地快照 + 上次同步 fingerprint / revision
-                 ↕
-          AWKN 最新实体快照
-                 ↓
-clean / local-newer / platform-newer / conflict / unbased / stale-platform
-```
+### P3 Task Execution
 
-平台状态不会静默覆盖本地状态。用户可以查看双快照并选择采用 AWKN 版本，或保留本地并携带 `base_revision` 回写。
-
-## P3 Task Execution
-
-Task 内的当前有效执行状态统一成一个产品实体：
+Task 当前有效执行状态统一为：
 
 ```text
 TaskExecutionState
@@ -88,36 +82,57 @@ TaskExecutionState
 └─ Outcome Note
 ```
 
-跨端操作：
+支持 `task.execution.get / task.execution.upsert`、revision、fingerprint、冲突合并与单飞同步。
+
+### P4 Learning
 
 ```text
-task.execution.get
-task.execution.upsert
+learning.run
+→ queued / running
+→ AppShell 全局 Poller
+→ learning.run.get
+→ completed / failed
+→ Signal 自动回流 Today
 ```
 
-执行状态使用稳定 ID：
+失败运行支持 `learning.run.retry`，同一 Workspace 存在未完成 Run 时禁止重复提交。
+
+---
+
+## Session / Tenant 边界
+
+P5 开始引入营销产品层 Session：
 
 ```text
-task-execution:{taskId}
+Tenant
++ Actor
++ Roles
++ Marketing Capabilities
++ Workspace Grants
 ```
 
-同步机制：
+原则：
 
-- 本地编辑即时保存；
-- User Final 编辑采用 700ms debounce；
-- Feedback / Outcome 立即触发快照同步；
-- 同一 Task Execution 同步采用单飞队列；
-- 新编辑发生在请求执行期间时，只保留最新待发送快照；
-- 幂等键包含 stable ID、base revision、snapshot fingerprint；
-- `feedback.record / outcome.record` 继续保留为事件记录；
-- Task Execution 保存当前有效状态快照；
-- Task Execution 同样支持 P2 的 revision / fingerprint 冲突合并。
+- 浏览器 Session 只用于 UI 与本地缓存隔离；
+- 真正授权由 AWKN 上游验证；
+- 前端不能通过自报 `tenant_id / actor_id` 获得权限；
+- 平台模式下 localStorage 按 `tenant + actor` 命名空间隔离；
+- 本地开发模式明确显示 `LOCAL SINGLE-USER`；
+- 生产环境未配置 Session 时默认 fail-closed，除非显式允许本地 Session。
 
 ---
 
 ## 接入 AWKN 产品接口
 
 复制 `.env.example` 为 `.env.local`。
+
+### Session
+
+```bash
+AWKN_MARKETING_SESSION_URL=http://your-awkn-marketing-session-endpoint
+AWKN_MARKETING_SESSION_TOKEN=
+AWKN_MARKETING_ALLOW_LOCAL_SESSION=false
+```
 
 ### Agent 任务
 
@@ -133,18 +148,6 @@ AWKN_MARKETING_API_URL=http://your-awkn-marketing-product-endpoint
 AWKN_MARKETING_API_TOKEN=
 ```
 
-`/api/product` 当前业务操作：
-
-- `workspace.create` / `workspace.update` / `workspace.get`
-- `material.feed`
-- `material.parse.get` / `material.parse.retry`
-- `task.create` / `task.update` / `task.get` / `task.run`
-- `task.execution.get` / `task.execution.upsert`
-- `feedback.record`
-- `outcome.record`
-- `evolution.review`
-- `learning.watch.upsert` / `learning.run`
-
 ### 二进制资料上传
 
 ```bash
@@ -153,29 +156,7 @@ AWKN_MARKETING_MATERIAL_UPLOAD_TOKEN=
 AWKN_MARKETING_MATERIAL_MAX_MB=100
 ```
 
-浏览器把文件提交给 `/api/material-upload`，Adapter 再转发给 AWKN 产品上传接口。本仓库不实现文件解析、向量化、Memory 或底层存储。
-
----
-
-## Local-first
-
-用户动作先完成本地写入，再同步 AWKN 产品接口。
-
-```text
-syncing
-synced
-local-only
-sync-error
-```
-
-成功同步后记录：
-
-```text
-platformRevision
-syncedFingerprint
-```
-
-用于后续 Workspace / Task / Task Execution 的冲突判断。
+产品 Route 会把受信任的 Cookie / Authorization 上下文继续转发给 AWKN 上游；本仓库不实现通用认证系统。
 
 ---
 
@@ -193,6 +174,7 @@ syncedFingerprint
 - 通用模型路由
 - 通用长期记忆生命周期
 - 通用文件解析 / 向量化基础设施
+- 通用身份认证基础设施
 
 ```text
 营销助理（产品层）
@@ -208,18 +190,18 @@ Memory OS   MCP
 
 ## 下一阶段
 
-1. 异步 `learning.run` 的运行状态自动回流与失败重试。
-2. 使用真实 AWKN 上传/解析服务完成 PDF / PPT / DOC / XLS 联调。
-3. 多用户、团队权限、认证与租户隔离。
-4. Experience Candidate / Evolution Review 的跨端 revision 读回。
+1. P5 Session / Tenant Isolation 完成 CI 验证。
+2. 营销产品 capability / Workspace Grant 的前端操作约束。
+3. Experience Candidate / Evolution Review 跨端 revision 读回。
+4. 使用真实 AWKN 服务完成 Session、文件解析、Agent、Learning 联调。
 5. 真实平台环境下 5 Workspace / 30 Task 业务验收。
 
 ## 文档
 
 - `docs/PRD.md`
 - `docs/FRONTEND.md`
-- `docs/frontend/README.md`
 - `docs/P0-BASELINE.md`
 - `docs/P1-MATERIAL-BASELINE.md`
 - `docs/P2-RECONCILE-BASELINE.md`
 - `docs/P3-EXECUTION-BASELINE.md`
+- `docs/P4-LEARNING-BASELINE.md`
