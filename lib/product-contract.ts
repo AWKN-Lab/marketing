@@ -8,6 +8,8 @@ export const PRODUCT_OPERATIONS = [
   "task.create",
   "task.update",
   "task.get",
+  "task.execution.get",
+  "task.execution.upsert",
   "task.run",
   "feedback.record",
   "outcome.record",
