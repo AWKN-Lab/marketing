@@ -2,18 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { buildP0Metrics, countLineDiff, type EvalTaskSample } from "@/lib/eval";
+import { readPersistedValue } from "@/lib/persistence";
 import { LOCAL_TASKS_KEY } from "@/lib/task-store";
 import type { MarketingTask } from "@/lib/types";
 import { usePersistedState } from "@/lib/use-persisted-state";
-
-function readLocal(key: string) {
-  try {
-    const value = window.localStorage.getItem(key);
-    return value ? JSON.parse(value) : null;
-  } catch {
-    return null;
-  }
-}
 
 function pct(value: number) {
   return `${Math.round(value * 100)}%`;
@@ -26,15 +18,15 @@ export function EvolutionMetrics() {
 
   useEffect(() => {
     setSamples(tasks.map((task) => {
-      const finalText = readLocal(`marketing:${task.id}:artifact`) ?? task.artifact.userFinal;
-      const feedback = readLocal(`marketing:${task.id}:feedback`) as string | null;
-      const outcome = readLocal(`marketing:${task.id}:outcome`) as string | null;
+      const finalText = readPersistedValue(`marketing:${task.id}:artifact`, task.artifact.userFinal);
+      const feedback = readPersistedValue<string | null>(`marketing:${task.id}:feedback`, null);
+      const outcome = readPersistedValue<string | null>(`marketing:${task.id}:outcome`, null);
       return {
         taskId: task.id,
         taskType: task.type,
         feedback,
         outcome,
-        editCount: countLineDiff(task.artifact.aiDraft, typeof finalText === "string" ? finalText : task.artifact.userFinal),
+        editCount: countLineDiff(task.artifact.aiDraft, finalText),
         appliedExperienceCount: task.appliedExperiences.length,
       };
     }));

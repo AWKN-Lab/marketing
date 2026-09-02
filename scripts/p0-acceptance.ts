@@ -5,6 +5,7 @@ import {
   matchReviewedExperience,
 } from "../lib/evolution-store.ts";
 import { buildP0Metrics } from "../lib/eval.ts";
+import { parsePersistedValue, serializePersistedValue } from "../lib/persistence.ts";
 
 function candidate(input: { taskId: string; workspaceId: string; taskType: string; outcome: string; note?: string }) {
   const fingerprint = candidateFingerprint({
@@ -64,4 +65,10 @@ assert.equal(metrics.experienceReuseRate, 0.5);
 assert.equal(metrics.repeatedTaskTypes[0].editDelta, -5);
 assert.equal(metrics.improvedTaskTypes, 1);
 
-console.log("P0 acceptance passed: evolution learning and product-eval boundaries are enforced.");
+const legacy = JSON.stringify({ hello: "legacy" });
+assert.deepEqual(parsePersistedValue(legacy, {}), { hello: "legacy" });
+const versioned = serializePersistedValue({ hello: "v1" });
+assert.deepEqual(parsePersistedValue(versioned, {}), { hello: "v1" });
+assert.deepEqual(parsePersistedValue("broken-json", { safe: true }), { safe: true });
+
+console.log("P0 acceptance passed: evolution, eval and local-state compatibility are enforced.");

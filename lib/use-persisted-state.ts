@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parsePersistedValue, serializePersistedValue } from "@/lib/persistence";
 
 export function usePersistedState<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(initialValue);
@@ -9,7 +10,7 @@ export function usePersistedState<T>(key: string, initialValue: T) {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(key);
-      if (saved !== null) setValue(JSON.parse(saved) as T);
+      setValue(parsePersistedValue(saved, initialValue));
     } catch {
       // P0: local persistence failure must not block task use.
     } finally {
@@ -20,7 +21,7 @@ export function usePersistedState<T>(key: string, initialValue: T) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(key, JSON.stringify(value));
+      window.localStorage.setItem(key, serializePersistedValue(value));
     } catch {
       // P0: UI remains usable even when storage is unavailable.
     }
