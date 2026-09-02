@@ -10,6 +10,7 @@ import {
 } from "@/lib/material-store";
 import { normalizeMaterialUploadAck, type MaterialPlatformResult } from "@/lib/material-upload";
 import { refreshMaterialParse, retryMaterialParse, uploadMaterialFile } from "@/lib/material-upload-client";
+import { syncMarketingProduct } from "@/lib/sync-store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
 type MaterialItem = { title: string; kind: string; source: string; status?: string };
@@ -49,6 +50,29 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     }));
   }
 
+  async function syncMaterial(material: LocalMaterial) {
+    const response = await syncMarketingProduct({
+      entityKey: `material:${material.id}`,
+      operation: "material.feed",
+      workspaceId,
+      expectedEntityId: material.id,
+      idempotencyKey: `material.feed:${material.id}`,
+      payload: {
+        entity_id: material.id,
+        material_id: material.id,
+        title: material.title,
+        kind: material.kind,
+        source: material.source,
+        parse_mode: material.parseMode,
+        content: material.content,
+        url: material.url,
+        created_at: material.createdAt,
+      },
+    });
+    const syncLabel = response.ok ? "AWKN 已同步" : response.error?.code === "PLATFORM_NOT_CONFIGURED" ? "仅本地" : "同步失败";
+    setAdded((current) => current.map((item) => item.id === material.id ? { ...item, status: `${material.status} · ${syncLabel}` } : item));
+  }
+
   async function uploadBinary(file: File, materialId: string) {
     const response = await uploadMaterialFile({ workspaceId, materialId, file });
     applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
@@ -82,13 +106,14 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     if (!files?.length) return;
     const next: LocalMaterial[] = [];
     const pendingUploads: Array<{ file: File; materialId: string }> = [];
+    const pendingFeeds: LocalMaterial[] = [];
     for (const file of Array.from(files)) {
       const kind = kindFromMaterialName(file.name);
       const materialId = `material-${Date.now()}-${next.length}`;
       if (isLocalTextFile({ name: file.name, type: file.type })) {
         const raw = await file.text();
         const content = raw.slice(0, MAX_LOCAL_TEXT_CHARS);
-        next.push({
+        const item: LocalMaterial = {
           id: materialId,
           title: file.name,
           kind,
@@ -97,7 +122,9 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
           parseMode: "local_text",
           content,
           createdAt: new Date().toISOString(),
-        });
+        };
+        next.push(item);
+        pendingFeeds.push(item);
       } else {
         next.push({
           id: materialId,
@@ -113,11 +140,14 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
       }
     }
     setAdded([...next, ...added]);
-    setMessage(`已加入 ${next.length} 份资料；文本文件直接进入上下文，二进制文件通过 AWKN 产品上传接口解析。`);
-    for (const pending of pendingUploads) await uploadBinary(pending.file, pending.materialId);
+    setMessage(`已加入 ${next.length} 份资料；所有资料统一使用稳定 material_id，文本同步 AWKN，二进制文件上传后解析。`);
+    await Promise.all([
+      ...pendingFeeds.map((material) => syncMaterial(material)),
+      ...pendingUploads.map((pending) => uploadBinary(pending.file, pending.materialId)),
+    ]);
   }
 
-  function addUrl() {
+  async function addUrl() {
     if (!url.trim()) return;
     const item: LocalMaterial = {
       id: `material-${Date.now()}`,
@@ -131,9 +161,10 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     };
     setAdded([item, ...added]);
     setUrl(""); setMode("none");
+    await syncMaterial(item);
   }
 
-  function addText() {
+  async function addText() {
     if (!text.trim()) return;
     const content = text.trim().slice(0, MAX_LOCAL_TEXT_CHARS);
     const title = content.slice(0, 28) + (content.length > 28 ? "…" : "");
@@ -149,6 +180,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     };
     setAdded([item, ...added]);
     setText(""); setMode("none");
+    await syncMaterial(item);
   }
 
   return (
@@ -159,10 +191,10 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
         <button className="button ghost" onClick={() => setMode(mode === "text" ? "none" : "text")}>粘贴文本</button>
         <input ref={fileInput} hidden multiple type="file" onChange={(event) => void addFiles(event.target.files)} />
       </div>
-      {mode === "url" && <div className="inline-feed"><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…"/><button className="button primary" onClick={addUrl}>加入</button></div>}
-      {mode === "text" && <div className="inline-feed"><textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="粘贴会议记录、聊天记录或历史方案片段…"/><button className="button primary" onClick={addText}>加入</button></div>}
+      {mode === "url" && <div className="inline-feed"><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…"/><button className="button primary" onClick={() => void addUrl()}>加入</button></div>}
+      {mode === "text" && <div className="inline-feed"><textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="粘贴会议记录、聊天记录或历史方案片段…"/><button className="button primary" onClick={() => void addText()}>加入</button></div>}
       {message && <p className="muted small">{message}</p>}
-      {!materials.length && <div className="dropzone" onClick={() => fileInput.current?.click()}><strong>先喂第一批资料</strong><span>TXT / MD / CSV / JSON 本地读取；PDF / PPT / DOC / XLS 等上传 AWKN 后解析</span></div>}
+      {!materials.length && <div className="dropzone" onClick={() => fileInput.current?.click()}><strong>先喂第一批资料</strong><span>TXT / MD / CSV / JSON 本地读取并同步；PDF / PPT / DOC / XLS 上传 AWKN 后解析</span></div>}
       {materials.map((material) => <div className="material-row" key={material.id}><div><strong>{material.title}</strong><p className="muted small">{material.kind} · {material.source} · {material.parseMode}{material.platformTraceId ? ` · trace ${material.platformTraceId}` : ""}</p></div><div className="row gap-sm"><span className={material.parseMode === "local_text" || material.parseMode === "platform_parsed" ? "status-ok" : "muted small"}>{material.status}</span>{!material.id.startsWith("demo-") && (material.platformStatus === "queued" || material.platformStatus === "parsing") && <button className="button ghost" onClick={() => void refreshParse(material.id)}>刷新解析</button>}{!material.id.startsWith("demo-") && material.platformStatus === "failed" && <button className="button ghost" onClick={() => void retryParse(material.id)}>重试解析</button>}</div></div>)}
     </div>
   );
