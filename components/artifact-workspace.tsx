@@ -6,7 +6,7 @@ import { OutcomeCapture } from "@/components/outcome-capture";
 import { createExperienceCandidate, LOCAL_CANDIDATES_KEY, type LocalEvolutionCandidate } from "@/lib/evolution-store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
-export function ArtifactWorkspace({ taskId, title, aiDraft, initialFinal }: { taskId: string; title: string; aiDraft: string; initialFinal: string }) {
+export function ArtifactWorkspace({ taskId, workspaceId, title, aiDraft, initialFinal }: { taskId: string; workspaceId: string; title: string; aiDraft: string; initialFinal: string }) {
   const [mode, setMode] = useState<"edit" | "diff">("edit");
   const [finalText, setFinalText] = usePersistedState(`marketing:${taskId}:artifact`, initialFinal);
   const [feedback, setFeedback] = usePersistedState<string | null>(`marketing:${taskId}:feedback`, null);
@@ -22,7 +22,7 @@ export function ArtifactWorkspace({ taskId, title, aiDraft, initialFinal }: { ta
 
   function createCandidate() {
     if (!feedback || !outcome || candidateCreated) return;
-    const candidate = createExperienceCandidate({ taskId, artifactTitle: title, feedback, outcome, editCount: diffSummary.removed.length + diffSummary.added.length });
+    const candidate = createExperienceCandidate({ taskId, workspaceId, artifactTitle: title, feedback, outcome, editCount: diffSummary.removed.length + diffSummary.added.length });
     setLocalCandidates([candidate, ...localCandidates]);
     setCandidateCreated(true);
   }

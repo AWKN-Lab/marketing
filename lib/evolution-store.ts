@@ -3,12 +3,15 @@ import type { EvolutionCandidate } from "@/lib/types";
 export type LocalEvolutionCandidate = EvolutionCandidate & {
   createdAt: string;
   taskId: string;
+  workspaceId?: string;
 };
 
 export const LOCAL_CANDIDATES_KEY = "marketing:evolution:candidates";
+export const EVOLUTION_REVIEWS_KEY = "marketing:evolution:reviews";
 
 export function createExperienceCandidate(input: {
   taskId: string;
+  workspaceId: string;
   artifactTitle: string;
   feedback: string;
   outcome: string;
@@ -17,6 +20,7 @@ export function createExperienceCandidate(input: {
   return {
     id: `local-ev-${Date.now()}`,
     taskId: input.taskId,
+    workspaceId: input.workspaceId,
     createdAt: new Date().toISOString(),
     type: "Experience Candidate",
     lesson: `在“${input.artifactTitle}”类任务中，优先参考本次用户最终采用的结构与表达`,
