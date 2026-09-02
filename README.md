@@ -6,15 +6,20 @@
 
 ### P0 可试跑基线｜DEVELOPMENT_VERIFIED
 
-基线：`c64fe96202b7d8b9ac9e88dd12acdcea2bc88dbd`  
-GitHub Actions Run：`33614796833`
+- 基线：`c64fe96202b7d8b9ac9e88dd12acdcea2bc88dbd`
+- GitHub Actions Run：`33614796833`
 
 ### P1 Material 基线｜DEVELOPMENT_VERIFIED
 
-基线：`81947e512aa41f3b4070756a0cd52e2830bc167d`  
-GitHub Actions Run：`33622442041`
+- 基线：`81947e512aa41f3b4070756a0cd52e2830bc167d`
+- GitHub Actions Run：`33622442041`
 
-两条基线均通过：
+### P2 Reconcile 基线｜DEVELOPMENT_VERIFIED
+
+- 基线：`7fa762439a46b22b46fbb2af112109611bb89448`
+- GitHub Actions Run：`33622898785`
+
+三条基线均通过：
 
 ```text
 npm run typecheck  ✓
@@ -22,7 +27,9 @@ npm run test:p0    ✓
 npm run build      ✓
 ```
 
-P0 主闭环：
+---
+
+## P0 主闭环
 
 ```text
 Workspace
@@ -38,7 +45,9 @@ Workspace
 → Next Task Reuse
 ```
 
-P1 Material 链：
+同时包含：Daily Learning、真实 Signal 回流、Local-first Sync、Product Eval、P0 数据导出/导入、Demo/真实数据隔离。
+
+## P1 Material
 
 ```text
 稳定 material_id
@@ -52,7 +61,30 @@ P1 Material 链：
 → Agent Context / Evidence Drawer
 ```
 
-> P1 的 DEVELOPMENT_VERIFIED 指营销产品仓库中的 Adapter、状态机、ID 边界、自动验收和 production build 已验证。它不等于 AWKN 上游上传/解析服务已经部署并完成真实文件联调。
+P1 的 DEVELOPMENT_VERIFIED 表示营销产品仓库中的 Adapter、状态机、ID 边界、自动验收和 production build 已验证。AWKN 上游上传/解析服务仍需真实环境联调。
+
+## P2 Platform Reconcile
+
+Workspace / Task 支持产品层状态读回与 revision 冲突检测：
+
+```text
+本地快照 + 上次同步 fingerprint / revision
+                 ↕
+          AWKN 最新实体快照
+                 ↓
+clean / local-newer / platform-newer / conflict / unbased / stale-platform
+```
+
+处理原则：
+
+- 平台读回必须保持相同 `entity_id`；
+- 平台状态不会静默覆盖本地状态；
+- `platform-newer` / `conflict` 提供本地与平台双快照；
+- 用户可选择“采用 AWKN 版本”或“保留本地并回写”；
+- 回写携带 `base_revision` 和幂等键；
+- 平台 revision 低于已知基线时标记 `stale-platform`。
+
+P2 当前覆盖 Workspace / Task 产品实体。Artifact 的独立编辑状态仍保存在任务工作台，尚未进入 revision 冲突合并范围。
 
 ---
 
@@ -96,10 +128,10 @@ AWKN_MARKETING_API_TOKEN=
 
 `/api/product` 当前业务操作：
 
-- `workspace.create` / `workspace.update`
+- `workspace.create` / `workspace.update` / `workspace.get`
 - `material.feed`
 - `material.parse.get` / `material.parse.retry`
-- `task.create` / `task.run`
+- `task.create` / `task.update` / `task.get` / `task.run`
 - `feedback.record`
 - `outcome.record`
 - `evolution.review`
@@ -113,54 +145,13 @@ AWKN_MARKETING_MATERIAL_UPLOAD_TOKEN=
 AWKN_MARKETING_MATERIAL_MAX_MB=100
 ```
 
-浏览器把文件提交给本仓库 `/api/material-upload`；该 Adapter 再以 multipart/form-data 转发给 AWKN 产品上传接口。本仓库不实现文件解析器、向量化、Memory 或底层存储。
-
----
-
-## Material Feed
-
-### 文本 / URL
-
-TXT、MD、CSV、JSON、YAML、XML、HTML、LOG 和其他 `text/*`：
-
-- 浏览器可直接读取文本；
-- 本地立即进入 Workspace / Agent Context；
-- 使用稳定 `material_id` 调用 `material.feed`；
-- 平台离线时仍可本地工作。
-
-URL：本地保存引用，同时以稳定 `material_id` 同步 `material.feed`。
-
-### PDF / PPT / DOC / XLS 等二进制资料
-
-```text
-选择文件
-→ 本地建立 material_id
-→ /api/material-upload
-→ AWKN 上传 / 解析
-→ parse_status
-→ evidence / parsed_text
-```
-
-状态：
-
-```text
-uploading
-queued
-parsing
-ready
-failed
-local-only
-```
-
-`queued / parsing` 每 8 秒自动刷新；失败可调用 `material.parse.retry`。上传接口未配置时明确显示 `local-only`，不伪造解析内容。
+浏览器把文件提交给 `/api/material-upload`，该 Adapter 再以 multipart/form-data 转发给 AWKN 产品上传接口。本仓库不实现文件解析器、向量化、Memory 或底层存储。
 
 ---
 
 ## Local-first
 
 用户动作先完成本地写入，再同步 AWKN 产品接口。
-
-同步状态：
 
 ```text
 syncing
@@ -170,6 +161,15 @@ sync-error
 ```
 
 Workspace / Task / Material / Feedback / Outcome / Evolution 均遵守稳定业务 ID 与幂等约束。
+
+成功同步后记录：
+
+```text
+platformRevision
+syncedFingerprint
+```
+
+它们用于后续 `workspace.get / task.get` 的冲突判断。
 
 ---
 
@@ -188,10 +188,12 @@ Workspace / Task / Material / Feedback / Outcome / Evolution 均遵守稳定业�
 - Agent Result evidence / artifact / trace
 - Daily Learning Run / Signal
 - Local-first Sync
+- Workspace / Task entity read identity
+- revision / fingerprint reconcile：clean、local-newer、platform-newer、conflict
 
 ---
 
-## 边界
+## 产品边界
 
 本仓库只实现营销产品层。
 
@@ -222,11 +224,11 @@ Memory OS   MCP
 
 ## 下一阶段
 
-1. AWKN 平台真实 Workspace / Task / Material 状态读回与 revision 冲突合并。
+1. Artifact / Feedback / Outcome 的 revision-aware 状态合并。
 2. 使用真实 AWKN 上传/解析服务完成 PDF / PPT / DOC / XLS 联调。
 3. 异步 `learning.run` 的完成通知 / 状态刷新。
 4. 多用户、团队权限、认证与租户隔离。
-5. 真实平台环境下 5 Workspace / 30 Task 的业务验收。
+5. 真实平台环境下 5 Workspace / 30 Task 业务验收。
 
 ## 文档
 
@@ -235,3 +237,4 @@ Memory OS   MCP
 - `docs/frontend/README.md`
 - `docs/P0-BASELINE.md`
 - `docs/P1-MATERIAL-BASELINE.md`
+- `docs/P2-RECONCILE-BASELINE.md`
