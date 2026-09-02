@@ -25,3 +25,12 @@ export async function refreshMaterialParse(input: { workspaceId: string; materia
     payload: { material_id: input.materialId },
   });
 }
+
+export async function retryMaterialParse(input: { workspaceId: string; materialId: string }): Promise<MaterialUploadAck> {
+  return callMarketingProduct<MaterialUploadData, { material_id: string }>({
+    operation: "material.parse.retry",
+    workspaceId: input.workspaceId,
+    idempotencyKey: `material.parse.retry:${input.materialId}`,
+    payload: { material_id: input.materialId },
+  });
+}

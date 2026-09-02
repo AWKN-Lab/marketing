@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isLocalTextFile,
   kindFromMaterialName,
@@ -9,7 +9,7 @@ import {
   type LocalMaterial,
 } from "@/lib/material-store";
 import { normalizeMaterialUploadAck, type MaterialPlatformResult } from "@/lib/material-upload";
-import { refreshMaterialParse, uploadMaterialFile } from "@/lib/material-upload-client";
+import { refreshMaterialParse, retryMaterialParse, uploadMaterialFile } from "@/lib/material-upload-client";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
 type MaterialItem = { title: string; kind: string; source: string; status?: string };
@@ -21,10 +21,19 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
   const [mode, setMode] = useState<"none" | "url" | "text">("none");
   const [message, setMessage] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const refreshing = useRef(new Set<string>());
   const materials: LocalMaterial[] = [
     ...added,
     ...initialMaterials.map((item, index): LocalMaterial => ({ ...item, id: `demo-${index}`, parseMode: "reference_only", createdAt: "", status: item.status ?? "DEMO" })),
   ];
+  const pendingKey = added.filter((material) => material.platformStatus === "queued" || material.platformStatus === "parsing").map((material) => material.id).sort().join("|");
+
+  useEffect(() => {
+    if (!pendingKey) return;
+    const ids = pendingKey.split("|").filter(Boolean);
+    const timer = window.setInterval(() => { for (const materialId of ids) void refreshParse(materialId, false); }, 8_000);
+    return () => window.clearInterval(timer);
+  }, [pendingKey, workspaceId]);
 
   function applyPlatformResult(materialId: string, result: MaterialPlatformResult) {
     setAdded((current) => current.map((material) => material.id !== materialId ? material : {
@@ -42,14 +51,31 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
 
   async function uploadBinary(file: File, materialId: string) {
     const response = await uploadMaterialFile({ workspaceId, materialId, file });
-    const result = normalizeMaterialUploadAck(response, materialId);
-    applyPlatformResult(materialId, result);
+    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
   }
 
-  async function refreshParse(materialId: string) {
-    setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在刷新解析状态…" } : material));
-    const response = await refreshMaterialParse({ workspaceId, materialId });
-    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+  async function refreshParse(materialId: string, announce = true) {
+    if (refreshing.current.has(materialId)) return;
+    refreshing.current.add(materialId);
+    if (announce) setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在刷新解析状态…" } : material));
+    try {
+      const response = await refreshMaterialParse({ workspaceId, materialId });
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+    } finally {
+      refreshing.current.delete(materialId);
+    }
+  }
+
+  async function retryParse(materialId: string) {
+    if (refreshing.current.has(materialId)) return;
+    refreshing.current.add(materialId);
+    setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在重新提交解析…", platformStatus: "queued", platformError: undefined } : material));
+    try {
+      const response = await retryMaterialParse({ workspaceId, materialId });
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+    } finally {
+      refreshing.current.delete(materialId);
+    }
   }
 
   async function addFiles(files: FileList | null) {
@@ -137,7 +163,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
       {mode === "text" && <div className="inline-feed"><textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="粘贴会议记录、聊天记录或历史方案片段…"/><button className="button primary" onClick={addText}>加入</button></div>}
       {message && <p className="muted small">{message}</p>}
       {!materials.length && <div className="dropzone" onClick={() => fileInput.current?.click()}><strong>先喂第一批资料</strong><span>TXT / MD / CSV / JSON 本地读取；PDF / PPT / DOC / XLS 等上传 AWKN 后解析</span></div>}
-      {materials.map((material) => <div className="material-row" key={material.id}><div><strong>{material.title}</strong><p className="muted small">{material.kind} · {material.source} · {material.parseMode}{material.platformTraceId ? ` · trace ${material.platformTraceId}` : ""}</p></div><div className="row gap-sm"><span className={material.parseMode === "local_text" || material.parseMode === "platform_parsed" ? "status-ok" : "muted small"}>{material.status}</span>{!material.id.startsWith("demo-") && (material.platformStatus === "queued" || material.platformStatus === "parsing") && <button className="button ghost" onClick={() => void refreshParse(material.id)}>刷新解析</button>}</div></div>)}
+      {materials.map((material) => <div className="material-row" key={material.id}><div><strong>{material.title}</strong><p className="muted small">{material.kind} · {material.source} · {material.parseMode}{material.platformTraceId ? ` · trace ${material.platformTraceId}` : ""}</p></div><div className="row gap-sm"><span className={material.parseMode === "local_text" || material.parseMode === "platform_parsed" ? "status-ok" : "muted small"}>{material.status}</span>{!material.id.startsWith("demo-") && (material.platformStatus === "queued" || material.platformStatus === "parsing") && <button className="button ghost" onClick={() => void refreshParse(material.id)}>刷新解析</button>}{!material.id.startsWith("demo-") && material.platformStatus === "failed" && <button className="button ghost" onClick={() => void retryParse(material.id)}>重试解析</button>}</div></div>)}
     </div>
   );
 }
