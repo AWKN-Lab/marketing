@@ -1,7 +1,20 @@
+type AgentMaterial = {
+  id: string;
+  title: string;
+  kind: string;
+  source: string;
+  status: string;
+  parse_mode: string;
+  content?: string;
+  url?: string;
+  truncated?: boolean;
+};
+
 type AgentRequest = {
   taskId?: string;
   workspaceId?: string;
   messages?: Array<{ role: string; content: string }>;
+  materials?: AgentMaterial[];
 };
 
 type UpstreamResponse = {
@@ -40,6 +53,7 @@ export async function POST(request: Request) {
         task_id: body.taskId,
         workspace_id: body.workspaceId,
         messages: body.messages,
+        materials: Array.isArray(body.materials) ? body.materials : [],
       }),
       cache: "no-store",
     });

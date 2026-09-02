@@ -5,6 +5,7 @@ import {
   matchReviewedExperience,
 } from "../lib/evolution-store.ts";
 import { buildP0Metrics } from "../lib/eval.ts";
+import { buildAgentMaterialContext, isLocalTextFile, type LocalMaterial } from "../lib/material-store.ts";
 import { buildP0Bundle, parseP0Bundle } from "../lib/p0-bundle.ts";
 import { parsePersistedValue, serializePersistedValue } from "../lib/persistence.ts";
 
@@ -78,4 +79,15 @@ const parsedBundle = parseP0Bundle(JSON.stringify(bundle));
 assert.equal(parsedBundle.entries["marketing:task"], "x");
 assert.throws(() => parseP0Bundle(JSON.stringify({ format: "wrong", version: 1, entries: {} })));
 
-console.log("P0 acceptance passed: evolution, eval, persistence and data portability are enforced.");
+assert.equal(isLocalTextFile({ name: "meeting.md", type: "text/markdown" }), true);
+assert.equal(isLocalTextFile({ name: "proposal.pdf", type: "application/pdf" }), false);
+const materialSamples: LocalMaterial[] = [
+  { id: "m1", title: "meeting.md", kind: "MD", source: "local", status: "Ready", parseMode: "local_text", content: "ABCDEFGHIJ", createdAt: "now" },
+  { id: "m2", title: "proposal.pdf", kind: "PDF", source: "local", status: "等待 AWKN 解析", parseMode: "platform_required", createdAt: "now" },
+];
+const agentMaterials = buildAgentMaterialContext(materialSamples, 5);
+assert.equal(agentMaterials[0].content, "ABCDE");
+assert.equal(agentMaterials[0].truncated, true);
+assert.equal("content" in agentMaterials[1], false);
+
+console.log("P0 acceptance passed: evolution, eval, persistence, portability and material-context boundaries are enforced.");

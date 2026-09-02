@@ -7,6 +7,8 @@ import {
   type ChatModelAdapter,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
+import { buildAgentMaterialContext, localMaterialsKey, type LocalMaterial } from "@/lib/material-store";
+import { readPersistedValue } from "@/lib/persistence";
 
 function createMarketingAdapter(context: { taskId: string; workspaceId: string }): ChatModelAdapter {
   return {
@@ -15,12 +17,14 @@ function createMarketingAdapter(context: { taskId: string; workspaceId: string }
         role: message.role,
         content: message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n"),
       }));
+      const localMaterials = readPersistedValue<LocalMaterial[]>(localMaterialsKey(context.workspaceId), []);
+      const materials = buildAgentMaterialContext(localMaterials);
 
       try {
         const response = await fetch("/api/agent", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ taskId: context.taskId, workspaceId: context.workspaceId, messages: serialized }),
+          body: JSON.stringify({ taskId: context.taskId, workspaceId: context.workspaceId, messages: serialized, materials }),
           signal: abortSignal,
         });
         const payload = (await response.json()) as { text?: string; error?: string };
