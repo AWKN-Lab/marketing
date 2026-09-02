@@ -6,6 +6,8 @@
 
 P0 前端可运行原型：Workspace → Task → Artifact → Evidence → Feedback → Outcome → Evolution。
 
+当前 P0 使用浏览器 `localStorage` 保存 Artifact 修改、Feedback、Outcome 与 Evolution Review，用于真实任务试跑。该存储只属于前端验证层，后续通过产品 Adapter 接入 AWKN 平台能力。
+
 ## 本地运行
 
 ```bash
@@ -15,9 +17,14 @@ npm run dev
 
 打开 `http://localhost:3000`。
 
-## 当前数据层
+## 验证
 
-`lib/mock-data.ts` 仅用于 P0 产品验证。后续通过产品 Adapter 接入 AWKN 平台接口。
+每次推送到 `main` 会运行 GitHub Actions：
+
+```bash
+npm run typecheck
+npm run build
+```
 
 ## 边界
 

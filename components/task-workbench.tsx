@@ -21,7 +21,7 @@ export function TaskWorkbench({ task }: { task: MarketingTask }) {
           </div>
           <div className="composer"><textarea aria-label="Task composer" placeholder="继续补充要求，或直接修改右侧产出物…"/><button type="button" className="send-button">↑</button></div>
         </section>
-        <ArtifactWorkspace title={task.artifact.title} aiDraft={task.artifact.aiDraft} initialFinal={task.artifact.userFinal} />
+        <ArtifactWorkspace taskId={task.id} title={task.artifact.title} aiDraft={task.artifact.aiDraft} initialFinal={task.artifact.userFinal} />
       </div>
     </main>
   );
