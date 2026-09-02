@@ -1,87 +1,119 @@
 # 自主进化营销助理 PRD
 
 > 仓库：`AWKN-Lab/marketing`  
-> 文档版本：V1.1  
+> 文档版本：V1.2  
 > 文档定位：产品母文档  
-> 当前阶段：产品结构 / MVP / 领域模型 / SKILL 契约  
+> 当前阶段：产品定位 / MVP / 产品组件 / Domain / SKILL / Eval  
 > 边界：仅定义产品层。底层能力只预留接口，不展开内部实现。
 
 ---
 
-# 1. 产品结论
+# 1. 一页结论
 
 ## 1.1 产品定义
 
-**自主进化营销助理**是一款面向关键客户经营场景的垂直营销产品。
+**自主进化营销助理**是一款会持续学习用户、客户、项目和营销方法，并把学到的经验自动应用到下一次任务中的 AI 营销产品。
 
-它帮助用户持续经营重要客户：
+它有三种核心工作方式：
 
-- 记住客户与项目历史
-- 发现新的业务变化
-- 判断当前机会和风险
-- 给出下一步行动
-- 跟踪结果
-- 从真实任务中沉淀可验证经验
+1. **喂资料**：理解客户、项目、行业、历史方案和用户自己的方法。
+2. **做任务**：研究、策略、方案、内容、会前准备、沟通与复盘。
+3. **自主学习**：每天主动学习与当前客户、项目和目标相关的新信息，形成信号、判断和行动建议。
 
-第一阶段只验证一个核心问题：
+每次真实任务结束后，系统根据用户修改、采纳、否决和真实结果形成 Experience Candidate。下一次遇到相似任务时，优先调用已经验证过的方法。
 
-> **系统能否比人更持续地经营 20 个真实关键客户。**
+一句话：
 
-## 1.2 对外卖什么
-
-不卖：
-
-- 企业 Memory Layer
-- 通用 AI 助手
-- 通用 CRM
-- Agent 平台
-- 技术基础设施
-
-对外卖：
-
-> **关键客户持续经营能力。**
-
-客户购买的直接结果：
-
-1. 重要客户不漏跟
-2. 历史信息不丢失
-3. 客户变化更早发现
-4. 下一步行动更明确
-5. 关键项目持续往前推进
-6. 团队经验可持续积累
-
-## 1.3 产品主张
-
-品牌表达可使用：
-
-> **生意不能忘。**
-
-产品解释：
-
-> 自动记住每一个重要客户发生过什么、正在发生什么、接下来该做什么。
+> **每做一次任务，下一次更懂你的生意。**
 
 ---
 
-# 2. 产品边界
+# 2. 产品战略
 
-## 2.1 本产品负责
+## 2.1 客户买什么
 
-自主进化营销助理只负责营销产品层：
+客户购买的核心结果：
 
+- 新任务无需反复从头交代背景
+- 以前做过的项目可以直接变成下一次任务的生产资料
+- 用户自己的营销判断和方法可以长期沉淀
+- 重要的新变化能够被主动发现
+- 输出越来越符合用户自己的判断方式
+- 已经验证有效的方法能够在相似任务中自动复用
+- 已经发生过的错误有机会在后续任务中被提前识别
+
+## 2.2 产品不做什么
+
+V1 明确不做：
+
+- CRM 替代品
+- 销售 Pipeline 管理系统
+- 通讯录管理系统
+- Campaign Automation
+- 群发与外呼平台
+- 广告投放平台
+- 通用知识库
+- 通用 AI Chat
+- Agent 平台
+- Memory 产品
+- 通用工作流平台
+
+客户、人物、机构、项目、关系等对象继续存在，但只作为营销任务的上下文，不建设完整 CRM 产品。
+
+## 2.3 核心竞争轴
+
+市场上的 Sales AI 已经普遍覆盖：
+
+```text
+Context
+→ Research
+→ Signal
+→ Next Best Action
+→ Workflow
+```
+
+本产品重点增加：
+
+```text
+Task
+→ User Feedback
+→ Outcome
+→ Experience
+→ Evaluation
+→ Behavior Change
+→ Next Task
+```
+
+最终竞争力来自：
+
+> **系统能否从用户自己的真实营销工作中持续学会更好的做法。**
+
+---
+
+# 3. 产品边界
+
+## 3.1 本产品负责
+
+自主进化营销助理只负责产品层：
+
+- Marketing Workspace
 - Marketing Domain
 - Marketing Agent
 - Marketing SKILL
 - Marketing Eval
-- 产品交互
-- 客户经营工作流
-- 业务状态
-- 业务规则
-- 业务成功标准
-- 产品层权限与人工确认节点
+- 营销任务体验
+- 项目上下文
+- 业务资产
+- 用户反馈
+- Outcome
+- Experience Candidate
+- Evolution Candidate
+- 产品层人工确认
+- 产品界面
 
-## 2.2 本产品不负责
+## 3.2 禁止重复建设
 
-禁止在本产品中重复建设：
+本仓库禁止重复建设：
 
 - Agent Runtime
 - 通用任务编排内核
@@ -89,17 +121,15 @@
 - 通用 MCP 框架
 - 通用 Tool Registry
 - 通用执行 Harness
-- 通用 Skill Runtime
+- 通用 SKILL Runtime
 - 通用模型路由
 - 通用长期记忆生命周期
 
-以上能力统一视为 AWKN 平台依赖。
+以上统一视为 AWKN 平台依赖。
 
-## 2.3 预留平台接口
+## 3.3 预留接口
 
-产品层只声明能力需求，不约束底层实现。
-
-预留接口类型：
+产品层只声明能力需求：
 
 1. `AgentRuntimePort`
 2. `MemoryPort`
@@ -109,808 +139,932 @@
 6. `EventPort`
 7. `EvalPort`
 
-所有接口遵循：
-
-> 产品定义业务语义，平台负责通用执行能力。
+产品定义业务语义、业务状态和业务成功标准。
 
 ---
 
-# 3. 核心业务闭环
+# 4. 产品核心闭环
 
-产品核心公式：
+## 4.1 主闭环
 
 ```text
-Signal
-  ↓
-Customer State
-  ↓
-Judgment
-  ↓
-Action
-  ↓
-Outcome
-  ↓
-Experience
-  ↓
-Evolution Candidate
+资料 / 历史 / 外部世界
+        ↓
+      Context
+        ↓
+       Task
+        ↓
+     Judgment
+        ↓
+    Deliverable
+        ↓
+用户采纳 / 修改 / 否决
+        ↓
+      Outcome
+        ↓
+     Experience
+        ↓
+ Evolution Candidate
+        ↓
+ 下一次相似任务自动应用
 ```
 
-对应业务含义：
-
-| 环节 | 产品回答的问题 |
-|---|---|
-| Signal | 客户或外部环境发生了什么变化 |
-| Customer State | 这个客户现在处于什么状态 |
-| Judgment | 当前最值得关注的机会、风险和阻塞是什么 |
-| Action | 今天应该做什么 |
-| Outcome | 做完以后客户有没有往前推进 |
-| Experience | 这次任务学到了什么 |
-| Evolution Candidate | 哪些经验值得成为可复用能力 |
-
----
-
-# 4. MVP 目标
-
-## 4.1 MVP 验证目标
-
-选择 20 个真实关键客户，连续经营。
-
-系统必须做到：
-
-1. 建立完整客户档案
-2. 聚合客户历史
-3. 识别关键变化
-4. 给出最多 3 个下一步动作
-5. 所有重要判断可追溯依据
-6. 用户执行后记录结果
-7. 从结果中形成 Experience Candidate
-8. 不自动发布进化结果
-
-## 4.2 MVP 不做
-
-V1 暂不做：
-
-- 全量 CRM 替代
-- 自动外呼
-- 全自动邮件发送
-- 全自动商务承诺
-- 全自动报价
-- 全自动政府正式材料提交
-- 多 Agent 群体协作
-- 自动发布 Skill
-- 自动修改核心业务规则
-- 高净值客户与政企客户同时建两套产品
-
----
-
-# 5. 产品组件树
+## 4.2 自主学习闭环
 
 ```text
-Marketing Product
+当前 Workspace
+      ↓
+需要持续关注什么
+      ↓
+每日主动学习
+      ↓
+发现 Signal
+      ↓
+判断是否影响当前任务 / 项目
+      ↓
+生成建议
+      ↓
+用户行动 / 忽略
+      ↓
+Outcome
+      ↓
+Experience
+```
+
+## 4.3 V1 自主进化定义
+
+V1 的自主进化必须能够被用户看见。
+
+至少表现为：
+
+1. 系统明确告诉用户“这次学到了什么”。
+2. 用户能够接受、修改、否决 Candidate。
+3. 系统明确告诉用户“下一次任务应用了哪些已经学会的方法”。
+4. 用户可以查看学习依据和适用边界。
+5. 错误 Candidate 不直接改变系统行为。
+
+V1 暂不允许 Evolution Candidate 自动成为 Active SKILL。
+
+---
+
+# 5. MVP 要验证什么
+
+MVP 不验证“能不能做一个 AI 营销工具”。
+
+通用模型已经可以完成大量研究、写作和方案任务。
+
+MVP 只验证三个问题：
+
+### Q1：它能不能越来越懂用户？
+
+同类型任务重复执行后：
+
+- 用户需要补充的背景越来越少
+- 用户修改越来越少
+- 第一次输出可用率越来越高
+
+### Q2：它能不能主动学习？
+
+系统每天能够主动发现与当前 Workspace 真正有关的变化，并产生有行动价值的更新。
+
+### Q3：它能不能从任务结果中学会方法？
+
+系统能够把一次成功或失败任务提炼为结构化 Experience Candidate，并在相似任务中正确复用。
+
+---
+
+# 6. MVP 用户
+
+V1 优先服务：
+
+- 创始人 / 老板
+- 高级营销负责人
+- 品牌与营销顾问
+- 政企客户负责人
+- 负责高价值、长周期、复杂营销项目的人
+
+共同特征：
+
+- 同时处理多个客户和项目
+- 决策依赖大量历史上下文
+- 有明显个人方法和判断标准
+- 工作成果大量存在于文档、会议、消息和历史方案里
+- 单个项目价值高
+- 经验复用价值高
+
+V1 不针对：
+
+- 大规模 SDR 外呼团队
+- 电商自动投放团队
+- 低客单高频标准化销售
+
+---
+
+# 7. 产品信息架构
+
+MVP 主导航只保留 4 个入口：
+
+```text
+自主进化营销助理
 │
-├─ 01 今日工作台
-│  ├─ 今日重点客户
-│  ├─ 今日行动
+├─ 01 今日
+│  ├─ 今天该做什么
 │  ├─ 新变化
-│  ├─ 到期承诺
-│  ├─ 风险预警
-│  └─ 待确认建议
+│  ├─ 正在进行的任务
+│  ├─ 待确认
+│  └─ 今日学习
 │
-├─ 02 客户中心
-│  ├─ 客户列表
-│  ├─ 客户详情
-│  ├─ 联系人
-│  ├─ 关系网络
-│  ├─ 项目 / 机会
-│  ├─ 沟通时间线
-│  ├─ 承诺
-│  ├─ 客户状态
-│  └─ 下一步行动
+├─ 02 Workspace
+│  ├─ 目标
+│  ├─ 资料
+│  ├─ 客户 / 人物 / 机构
+│  ├─ 任务
+│  ├─ 产出物
+│  ├─ 决策
+│  ├─ 关键时间线
+│  └─ Outcome
 │
-├─ 03 项目与机会
-│  ├─ 项目列表
-│  ├─ 机会列表
-│  ├─ 阶段
-│  ├─ 决策链
-│  ├─ 阻塞
-│  ├─ 风险
-│  ├─ 竞争态势
-│  └─ 推进记录
-│
-├─ 04 营销助理
+├─ 03 营销助理
 │  ├─ 对话
-│  ├─ 客户研究
-│  ├─ 会前准备
-│  ├─ 关系分析
-│  ├─ 机会判断
-│  ├─ 跟进建议
-│  ├─ 文案生成
+│  ├─ 新任务
+│  ├─ 研究
+│  ├─ 策略
+│  ├─ 方案 / 内容
+│  ├─ 会前 / 沟通准备
 │  └─ 复盘
 │
-├─ 05 学习中心
-│  ├─ 每日学习
-│  ├─ 外部信号
-│  ├─ 学习记录
-│  ├─ Experience Candidate
-│  └─ 待确认知识
-│
-├─ 06 进化中心
-│  ├─ Candidate
-│  ├─ 证据
-│  ├─ 适用边界
-│  ├─ 反例
-│  ├─ Eval 结果
-│  ├─ 人工审批
-│  └─ 版本历史
-│
-└─ 07 设置
-   ├─ 客户范围
-   ├─ 数据源
-   ├─ 权限
-   ├─ 通知
-   ├─ 人工确认策略
-   └─ 业务目标
+└─ 04 进化
+   ├─ 最近学会
+   ├─ Experience Candidate
+   ├─ Evolution Candidate
+   ├─ 已验证方法
+   ├─ 被否决方法
+   ├─ 使用记录
+   └─ 版本 / 回退
 ```
+
+删除独立的：
+
+- 客户中心
+- 联系人中心
+- 机会 Pipeline
+- 项目 Pipeline
+- CRM 式关系管理后台
+
+这些信息在 Workspace 中按任务需要呈现。
 
 ---
 
-# 6. 核心页面
+# 8. 页面一：今日
 
-## 6.1 页面一：今日工作台
-
-### 目标
+## 8.1 页面目标
 
 用户打开产品后 30 秒内知道：
 
-> **今天最值得推进什么。**
+> **今天有什么值得我知道、值得我做、值得我确认。**
 
-### 页面结构
+## 8.2 页面结构
 
-#### A. 今日最重要的 5 件事
+### A. 今日重点
 
-每条必须包含：
+最多 5 条。
 
-- 客户
-- 项目 / 机会
-- 推荐动作
-- 推荐原因
-- 紧急度
+每条包含：
+
+- Workspace
+- 发生了什么
+- 为什么重要
+- 建议动作
 - 依据
-- 是否需要人工确认
+- 优先级
 
-示例：
+### B. 新变化
+
+只展示与当前 Workspace 相关的变化：
+
+- 客户变化
+- 关键人员变化
+- 政策变化
+- 行业变化
+- 项目变化
+- 竞争变化
+- 舆情 / 市场变化
+
+### C. 继续任务
+
+展示：
+
+- 正在进行
+- 等待用户信息
+- 等待确认
+- 等待结果
+
+### D. 今日学习
+
+展示系统当天主动学到的内容：
 
 ```text
-厦门某文旅部门
-建议：今天联系项目负责人确认 Q4 活动规划
-原因：
-- 上次会议约定本周确认
-- 过去 6 天没有新互动
-- 昨日发布新的文旅促消费政策
+发现什么
+影响哪个 Workspace
+影响什么判断
+建议怎么处理
+来源是什么
 ```
 
-#### B. 新变化
+### E. 最近进化
 
-展示：
+只显示真正改变后续行为的内容，例如：
 
-- 人员变化
-- 政策变化
-- 项目变化
-- 客户公开动态
-- 企业动态
-- 采购动态
-- 竞争动态
+> 上周 3 次政府提案中，你都删除了“宏观趋势铺垫”，系统已形成候选偏好：政府项目方案优先从具体任务与落地结果进入。
 
-#### C. 待处理承诺
+用户操作：
 
-展示：
+- 接受
+- 修改
+- 拒绝
+- 查看依据
 
-- 我方承诺
-- 客户承诺
-- 截止日期
-- 当前状态
+---
 
-#### D. 风险预警
+# 9. 页面二：Workspace
+
+Workspace 是产品核心业务容器。
+
+它可以代表：
+
+- 一个客户
+- 一个政府部门
+- 一个高价值客户群
+- 一个品牌
+- 一个营销项目
+- 一次提案
+- 一个长期课题
+
+## 9.1 Workspace 首页回答 5 个问题
+
+1. 当前目标是什么
+2. 已经知道什么
+3. 正在做什么
+4. 最近发生什么
+5. 下一步最值得做什么
+
+## 9.2 Workspace 模块
+
+### A. Goal
+
+字段：
+
+- primary_goal
+- success_criteria
+- deadline
+- constraints
+- owner
+- status
+
+### B. Context
+
+包含：
+
+- 客户 / 机构
+- 人物
+- 项目背景
+- 历史合作
+- 已确认事实
+- 用户判断
+- 关键约束
+
+### C. Materials
+
+支持：
+
+- 文档
+- PPT
+- PDF
+- 表格
+- 网页
+- 链接
+- 会议记录
+- 聊天记录
+- 用户手工输入
+
+每份材料必须保留来源和时间。
+
+### D. Tasks
+
+每个 Task 包含：
+
+- 目标
+- 输入
+- 使用上下文
+- 使用 SKILL
+- 输出
+- 用户反馈
+- 真实结果
+- 复盘
+
+### E. Artifacts
 
 例如：
 
-- 30 天无实质推进
-- 关键联系人离职
-- 项目预算变化
-- 竞争对手进入
-- 已承诺事项逾期
-- 决策链缺失
+- 研究报告
+- 策略判断
+- 提案
+- 汇报框架
+- 演讲稿
+- 文案
+- 会前 Brief
+- 沟通建议
+- 复盘
+
+### F. Decision Log
+
+记录：
+
+- 做了什么判断
+- 为什么
+- 谁确认
+- 当时依据
+- 后来结果
+
+### G. Timeline
+
+只保留影响判断的关键事件。
+
+避免建设完整 CRM 活动流水账。
 
 ---
 
-# 7. 客户作战页
+# 10. 页面三：营销助理
 
-客户作战页是 MVP 最重要页面。
+## 10.1 产品形态
 
-## 7.1 页面目标
+营销助理采用 Task-first 交互。
 
-回答六个问题：
+用户可以直接说：
 
-1. 我们知道什么
-2. 最近发生什么
-3. 现在是什么状态
-4. 有什么机会和风险
-5. 今天应该做什么
-6. 做完以后怎么样
+- 把这些资料吃透
+- 研究这个客户
+- 帮我判断这个项目值不值得追
+- 做一份明天汇报的策略框架
+- 看看这版方案哪里有问题
+- 帮我准备明天和某部门领导的沟通
+- 复盘刚刚输掉的项目
+- 每天帮我学习这个行业和这几个客户
 
-## 7.2 页面模块
+## 10.2 每个任务输出必须包含
 
-### A. 客户摘要
+### 任务结果
 
-- 客户名称
-- 客户类型
-- 当前关系阶段
-- 当前项目
-- 当前机会
-- 关键联系人
-- 最近互动
-- 下一关键时间点
+用户真正需要的产出物。
 
-### B. 客户关系图
+### 关键依据
+
+事实、来源和重要历史上下文。
+
+### 判断
+
+哪些是事实，哪些是推断，哪些仍待确认。
+
+### 学到的方法
+
+当任务存在明确用户修改或真实 Outcome 时，任务结束后提示：
+
+> 本次是否有值得沉淀的方法？
+
+### 已调用经验
+
+如果系统复用了历史方法，要明确展示：
+
+```text
+本次应用：
+- 政府方案先讲具体任务，再进入策略
+- 同类汇报第一页控制在一个核心判断
+
+来源：
+- Workspace A / Task 17
+- Workspace B / Task 09
+```
+
+这是“自主进化”最重要的可见证据之一。
+
+---
+
+# 11. 页面四：进化
+
+进化中心不做技术后台。
+
+它只回答：
+
+> **这个助理最近学会了什么，为什么学会，之后会怎么做。**
+
+## 11.1 最近学会
 
 展示：
 
-- 人
-- 部门
-- 角色
-- 关系
-- 决策影响力
-- 我方连接人
-
-### C. 时间线
-
-统一展示：
-
-- 会议
-- 消息
-- 邮件
-- 文件
-- 电话记录
-- 项目变化
-- 外部信号
-- 承诺
-- 决策
-- Outcome
-
-### D. 当前判断
-
-统一输出：
-
-- 客户状态
-- 项目阶段
-- 机会等级
-- 关系温度
-- 关键阻塞
-- 当前风险
-- 建议策略
-
-### E. 下一步行动
-
-最多 3 条。
-
-每一条必须回答：
-
-- 做什么
-- 找谁
-- 为什么现在做
-- 预期结果
-- 风险
+- 学到了什么
+- 来源任务
 - 依据
+- 适用场景
+- 反例
+- 置信度
+- 用户状态
 
-### F. 证据抽屉
+## 11.2 Candidate 类型
 
-任何关键判断均可展开查看：
+V1 允许形成：
 
-- 原消息
-- 原会议
-- 原文件
-- 原网页
-- 原历史记录
-- 历史 Experience
+- Preference Candidate
+- Decision Pattern Candidate
+- Experience Candidate
+- Checklist Candidate
+- SKILL Candidate
 
----
+V1 只允许前三类影响个性化建议。
 
-# 8. Marketing Domain Model
+Checklist / SKILL Candidate 必须人工确认后进入后续验证流程。
 
-## 8.1 Account
+## 11.3 用户控制
 
-代表一个需要持续经营的客户主体。
+用户可以：
 
-核心字段：
-
-| 字段 | 含义 |
-|---|---|
-| account_id | 唯一 ID |
-| name | 客户名称 |
-| account_type | 政府 / 企业 / 机构 / 其他 |
-| industry | 行业 |
-| region | 地区 |
-| owner | 内部负责人 |
-| priority | 优先级 |
-| relationship_stage | 关系阶段 |
-| status | 活跃 / 暂停 / 结束 |
-| last_interaction_at | 最近互动时间 |
-| next_action_at | 下一动作时间 |
-| tags | 标签 |
-
-## 8.2 Organization
-
-用于表示客户内部组织结构。
-
-字段：
-
-- organization_id
-- account_id
-- name
-- organization_type
-- parent_id
-- responsibility
-- region
-- status
-
-## 8.3 Person
-
-字段：
-
-- person_id
-- account_id
-- organization_id
-- name
-- title
-- role
-- influence_level
-- decision_role
-- contact_channel
-- relationship_strength
-- preferences
-- concerns
-- last_interaction_at
-- status
-
-## 8.4 Relationship
-
-字段：
-
-- relationship_id
-- subject_id
-- object_id
-- relationship_type
-- strength
-- direction
-- source
-- confidence
-- valid_from
-- valid_to
-
-## 8.5 Project
-
-字段：
-
-- project_id
-- account_id
-- name
-- project_type
-- stage
-- objective
-- budget_status
-- timeline
-- owner
-- stakeholders
-- blockers
-- competitors
-- next_milestone
-- status
-
-## 8.6 Opportunity
-
-字段：
-
-- opportunity_id
-- account_id
-- project_id
-- title
-- opportunity_type
-- stage
-- value_estimate
-- probability
-- urgency
-- evidence
-- blockers
-- risks
-- next_action
-- status
-
-## 8.7 Interaction
-
-字段：
-
-- interaction_id
-- account_id
-- person_ids
-- project_id
-- channel
-- occurred_at
-- summary
-- key_points
-- customer_requests
-- objections
-- commitments
-- next_steps
-- source_ref
-
-## 8.8 Commitment
-
-字段：
-
-- commitment_id
-- account_id
-- project_id
-- person_id
-- commitment_owner
-- content
-- due_at
-- status
-- completed_at
-- evidence_ref
-
-## 8.9 Signal
-
-字段：
-
-- signal_id
-- account_id
-- person_id
-- project_id
-- signal_type
-- source
-- occurred_at
-- content
-- relevance
-- urgency
-- confidence
-- status
-
-## 8.10 Action
-
-字段：
-
-- action_id
-- account_id
-- project_id
-- person_id
-- action_type
-- content
-- reason
-- expected_outcome
-- due_at
-- priority
-- approval_required
-- status
-
-## 8.11 Outcome
-
-字段：
-
-- outcome_id
-- action_id
-- account_id
-- project_id
-- outcome_type
-- result
-- stage_change
-- relationship_change
-- value_change
-- evidence_ref
-- occurred_at
-
-## 8.12 Experience Candidate
-
-字段：
-
-- experience_id
-- source_task_id
-- account_type
-- situation
-- goal
-- constraints
-- action
-- result
-- outcome
-- root_cause
-- lesson
-- applicable_scope
-- counterexamples
-- evidence_refs
-- confidence
-- status
+- 接受
+- 修改
+- 拒绝
+- 标记只适用于某 Workspace
+- 标记全局适用
+- 查看来源
+- 查看后续被使用过几次
+- 回退
 
 ---
 
-# 9. 客户阶段模型
+# 12. Marketing Domain Model
 
-MVP 默认采用简化阶段：
+V1 Domain 围绕“营销工作”设计，不围绕 CRM 设计。
+
+## 12.1 Workspace
 
 ```text
-发现
-↓
-建立联系
-↓
-形成需求
-↓
-进入项目
-↓
-方案 / 沟通
-↓
-决策推进
-↓
-成交 / 合作
-↓
-持续经营
+workspace_id
+name
+workspace_type
+goal
+success_criteria
+constraints
+priority
+owner
+status
+created_at
+updated_at
 ```
 
-每个客户和项目必须允许：
+## 12.2 Entity
 
-- 前进
-- 停滞
-- 回退
-- 暂停
-- 结束
+通用上下文实体。
 
-阶段变化必须记录原因与证据。
+```text
+entity_id
+workspace_id
+entity_type
+name
+attributes
+relationships
+source_refs
+confidence
+status
+```
+
+`entity_type` 可以包括：
+
+- person
+- organization
+- department
+- brand
+- project
+- policy
+- competitor
+- audience
+- product
+
+V1 不为每一种实体建设独立后台。
+
+## 12.3 Material
+
+```text
+material_id
+workspace_id
+material_type
+title
+source
+source_time
+content_ref
+summary
+tags
+status
+```
+
+## 12.4 Task
+
+```text
+task_id
+workspace_id
+task_type
+goal
+input_refs
+context_refs
+skill_ids
+started_at
+completed_at
+status
+```
+
+## 12.5 Artifact
+
+```text
+artifact_id
+task_id
+workspace_id
+artifact_type
+content_ref
+version
+status
+created_at
+```
+
+## 12.6 Signal
+
+```text
+signal_id
+workspace_id
+entity_ids
+signal_type
+content
+source_ref
+occurred_at
+relevance
+urgency
+confidence
+status
+```
+
+## 12.7 Decision
+
+```text
+decision_id
+workspace_id
+task_id
+decision
+reason
+evidence_refs
+confidence
+confirmed_by
+status
+```
+
+## 12.8 Feedback
+
+```text
+feedback_id
+task_id
+artifact_id
+feedback_type
+original_content
+modified_content
+reason(optional)
+created_at
+```
+
+`feedback_type`：
+
+- accept
+- edit
+- reject
+- retry
+- partial_accept
+
+## 12.9 Outcome
+
+```text
+outcome_id
+task_id
+workspace_id
+expected_outcome
+actual_outcome
+outcome_type
+business_effect
+evidence_refs
+occurred_at
+```
+
+## 12.10 Experience Candidate
+
+```text
+experience_id
+source_task_ids
+situation
+goal
+constraints
+action
+feedback
+outcome
+success_factor
+failure_factor
+root_cause
+lesson
+applicable_scope
+counterexamples
+evidence_refs
+confidence
+status
+```
+
+## 12.11 Evolution Candidate
+
+```text
+evolution_id
+candidate_type
+source_experience_ids
+proposed_change
+applicable_scope
+expected_gain
+risk
+validation_status
+user_status
+version
+```
 
 ---
 
-# 10. Marketing Agent
-
-## 10.1 单 Agent 原则
+# 13. Marketing Agent
 
 MVP 只设一个：
 
 > **Marketing Agent**
 
-暂不拆分研究 Agent、销售 Agent、复盘 Agent、学习 Agent。
+不拆研究 Agent、策略 Agent、文案 Agent、学习 Agent、复盘 Agent。
 
-Marketing Agent 通过不同 SKILL 完成任务。
+通过不同 SKILL 完成任务。
 
-## 10.2 核心职责
+## 13.1 核心职责
 
-Marketing Agent 负责：
+1. 理解营销任务目标
+2. 获取 Workspace 上下文
+3. 选择需要的 SKILL
+4. 获取必要的外部信息
+5. 形成判断
+6. 交付任务结果
+7. 引用依据
+8. 读取适用的已验证 Experience
+9. 记录用户反馈与 Outcome
+10. 触发 Experience Candidate
 
-1. 理解用户营销目标
-2. 获取当前客户上下文
-3. 判断所需 SKILL
-4. 组织业务任务
-5. 输出营销判断
-6. 给出可执行动作
-7. 引用证据
-8. 要求必要人工确认
-9. 记录任务结果
-10. 触发复盘与 Experience Candidate
+## 13.2 禁止事项
 
-## 10.3 禁止事项
-
-Marketing Agent 不得：
-
-- 未经确认对外发送高风险内容
-- 未经确认做价格承诺
-- 未经确认做合同承诺
-- 未经确认提交政府正式文件
 - 把推测写成事实
-- 删除关键历史证据
-- 自动发布进化后的 Skill
+- 无依据改写关键客户事实
+- 未经确认对外做高风险承诺
+- 未经确认发送正式外部材料
+- 未经确认发布新的 Rule / SKILL
+- 因单次用户修改直接形成全局规则
 
 ---
 
-# 11. Marketing SKILL 体系
+# 14. MVP SKILL 体系
 
-MVP 首批只做 6 个 SKILL。
+首批 6 个 SKILL：
 
 ```text
 Marketing Agent
 │
-├─ S1 客户研究
-├─ S2 关系分析
-├─ S3 机会判断
-├─ S4 会前准备
-├─ S5 跟进建议
-└─ S6 任务复盘
+├─ S1 资料消化与上下文构建
+├─ S2 营销研究与每日学习
+├─ S3 策略判断
+├─ S4 方案与内容生产
+├─ S5 会前与沟通准备
+└─ S6 任务复盘与经验提炼
 ```
 
 ---
 
-# 12. S1 客户研究 SKILL
+# 15. S1 资料消化与上下文构建
 
 ## 输入
 
 ```text
-account_id
+workspace_id
+material_refs
+user_goal(optional)
+```
+
+## 输出
+
+```text
+confirmed_facts
+entities
+important_history
+user_viewpoints
+constraints
+open_questions
+potential_conflicts
+source_refs
+```
+
+## 成功标准
+
+- 能把大量历史资料变成可调用 Context
+- 重要事实有来源
+- 冲突信息被标记
+- 不重复生成已有事实
+- 不把推测写入已确认事实
+
+---
+
+# 16. S2 营销研究与每日学习
+
+## 输入
+
+```text
+workspace_id
 research_goal
+watch_scope
 known_context
-allowed_sources
 freshness_requirement
 ```
 
 ## 输出
 
 ```text
-account_summary
-key_people
-organization_changes
-business_changes
-policy_or_market_signals
-potential_projects
+new_facts
+signals
+changes
+why_it_matters
+impact_on_current_judgment
+action_required
+unknowns
+source_refs
+```
+
+## 两种模式
+
+### On-demand Research
+
+用户主动发起一次研究任务。
+
+### Daily Learning
+
+围绕 Workspace 自动学习。
+
+每天只输出：
+
+- 新变化
+- 影响
+- 建议动作
+- 来源
+
+禁止生成无关新闻摘要。
+
+---
+
+# 17. S3 策略判断
+
+## 输入
+
+```text
+workspace_id
+goal
+context
+signals
+constraints
+relevant_experiences
+```
+
+## 输出
+
+```text
+core_judgment
+key_problem
+strategic_options
+recommended_direction
+reasoning_summary
 risks
 unknowns
-evidence_refs
-```
-
-## 成功标准
-
-- 新信息有来源
-- 已知信息不重复堆砌
-- 明确区分事实 / 判断 / 待验证
-- 研究结果能影响后续行动
-
----
-
-# 13. S2 关系分析 SKILL
-
-## 输入
-
-```text
-account_id
-project_id(optional)
-relationship_graph
-interaction_history
-```
-
-## 输出
-
-```text
-key_decision_makers
-influencers
-supporters
-blockers
-missing_relationships
-relationship_risks
-recommended_connection_path
-evidence_refs
-```
-
-## 成功标准
-
-- 决策链更清楚
-- 能指出关系缺口
-- 能形成具体连接动作
-
----
-
-# 14. S3 机会判断 SKILL
-
-## 输入
-
-```text
-account_id
-project_id
-signals
-customer_state
-interaction_history
-```
-
-## 输出
-
-```text
-opportunity_level
-opportunity_reason
-urgency
-probability
-blockers
-risks
-why_now
-recommended_strategy
 next_actions
 evidence_refs
+applied_experience_refs
 ```
 
 ## 成功标准
 
-判断最终必须转化成：
-
-> 下一步是否值得投入，以及应该投入什么动作。
+- 给出明确判断
+- 结论能够转化成下一步
+- 引用与当前场景相符的历史 Experience
+- 不堆通用营销理论
 
 ---
 
-# 15. S4 会前准备 SKILL
+# 18. S4 方案与内容生产
 
 ## 输入
 
 ```text
-account_id
-meeting_time
-participants
+workspace_id
+artifact_type
+goal
+audience
+context
+constraints
+reference_materials
+relevant_experiences
+```
+
+## 输出
+
+```text
+artifact
+key_message
+structure
+assumptions
+evidence_refs
+applied_experience_refs
+```
+
+## 覆盖任务
+
+- PRD / 提案
+- 营销策略
+- 品牌方案
+- 汇报框架
+- 演讲稿
+- 文案
+- 会议材料
+- 一页纸
+
+## 进化重点
+
+用户对产出物的修改必须被捕获为 Feedback。
+
+系统重点学习：
+
+- 用户删掉什么
+- 用户保留什么
+- 用户重写什么
+- 用户经常调整的逻辑顺序
+- 哪些表达在什么场景被接受
+
+单次修改不能直接变成全局偏好。
+
+---
+
+# 19. S5 会前与沟通准备
+
+## 输入
+
+```text
+workspace_id
 meeting_goal
-project_id(optional)
+participants
+relevant_history
+latest_signals
+open_items
 ```
 
 ## 输出
 
 ```text
 one_page_brief
-participant_profiles
-recent_changes
+what_changed
+participant_context
+important_history
 open_commitments
-key_questions
-recommended_topics
-avoid_topics
 meeting_objective
+key_questions
+recommended_talking_points
+avoid_points
 ideal_next_step
-evidence_refs
-```
-
-## 设计目标
-
-会前 3 分钟可读完。
-
----
-
-# 16. S5 跟进建议 SKILL
-
-## 输入
-
-```text
-account_id
-project_id
-latest_interaction
-current_state
-commitments
-signals
-```
-
-## 输出
-
-最多 3 条：
-
-```text
-action
-person
-channel
-reason
-why_now
-expected_outcome
-risk
-due_at
 evidence_refs
 ```
 
 ## 成功标准
 
-避免输出泛化建议，例如：
-
-- 保持联系
-- 加强沟通
-- 持续关注
-
-必须给出具体动作。
+- 3 分钟内可读完
+- 能找到历史关键承诺
+- 能发现与当前会议直接相关的新变化
+- 给出明确会议目标
 
 ---
 
-# 17. S6 任务复盘 SKILL
+# 20. S6 任务复盘与经验提炼
 
 ## 输入
 
 ```text
 task_id
 original_goal
-original_judgment
-actions
-tool_evidence
+original_output
 user_feedback
+actual_action
 outcome
+evidence_refs
 ```
 
 ## 输出
@@ -918,6 +1072,7 @@ outcome
 ```text
 facts
 expected_vs_actual
+user_changes
 success_factors
 failure_factors
 root_cause
@@ -932,169 +1087,162 @@ experience_candidate
 
 任务复盘只产生 Candidate。
 
-V1 不允许自动成为：
+V1 禁止直接成为：
 
 - Rule
 - Checklist
-- Skill
-- Prompt
+- SKILL
 - Policy
 
-必须经过后续验证与人工确认。
-
 ---
 
-# 18. 每日自主学习
+# 21. 自主进化机制
 
-## 18.1 目标
+## 21.1 什么值得学习
 
-每日学习不是泛读新闻。
+优先级从高到低：
 
-只学习可能影响：
+### A. 真实 Outcome
 
-- 关键客户
-- 关键人员
-- 重点项目
-- 当前机会
-- 客户所在行业
-- 政策与采购窗口
-
-的信息。
-
-## 18.2 每日循环
-
-```text
-重点客户清单
-↓
-需要监测的 Signal
-↓
-获取公开信息
-↓
-去重 / 可信度判断
-↓
-客户关联
-↓
-影响判断
-↓
-生成更新
-↓
-必要时生成下一步行动
-```
-
-## 18.3 学习结果
-
-每天输出：
-
-1. 新变化
-2. 涉及客户
-3. 为什么重要
-4. 是否影响当前判断
-5. 是否需要动作
-6. 原始依据
-
----
-
-# 19. 自主进化产品机制
-
-## 19.1 V1 定义
-
-自主进化在 V1 只意味着：
-
-> 从真实营销任务和结果中持续产生可验证的 Experience Candidate。
-
-不意味着系统可以自行改写核心逻辑。
-
-## 19.2 Candidate 来源
-
-来源包括：
-
-- 成功项目
-- 失败项目
-- 客户回复
-- 用户否决
-- 用户修改
-- 阶段推进
-- 阶段回退
+- 项目推进
+- 方案通过
+- 客户接受
+- 会议达成目标
 - 成交
 - 丢单
-- 长期无反馈
+- 项目失败
 
-## 19.3 Candidate 内容
+### B. 用户明确行为
 
-必须包含：
+- 接受
+- 修改
+- 拒绝
+- 重做
+- 指定原因
+
+### C. 重复模式
+
+相似场景反复出现相同修改、相同选择或相同结果。
+
+## 21.2 Candidate 最低标准
+
+每个 Candidate 至少包含：
 
 - Situation
 - Goal
-- Constraints
 - Action
+- Feedback / Outcome
 - Evidence
-- Outcome
-- Root Cause
 - Lesson
 - Applicable Scope
 - Counterexample
+- Confidence
 
-## 19.4 进化状态
+缺失真实反馈或 Outcome 时，只能形成低置信度候选。
+
+## 21.3 状态机
 
 ```text
 Draft
 ↓
 Candidate
 ↓
+Evidence Checked
+↓
 Evaluated
 ↓
-Review Required
+User Review
 ↓
-Approved / Rejected
+Accepted / Rejected / Scoped
 ```
 
 V1 到此结束。
 
-不自动进入 Active Skill。
+## 21.4 下一次如何应用
+
+当新任务满足 Candidate 的适用边界时：
+
+```text
+New Task
+↓
+Match Experiences
+↓
+Select Relevant Experience
+↓
+Apply
+↓
+Show User What Was Applied
+↓
+Task Outcome
+↓
+Update Confidence
+```
+
+“应用过什么经验”必须可见、可追溯。
 
 ---
 
-# 20. Marketing Eval
+# 22. Product Eval
 
-## 20.1 北极星指标
+产品必须同时评价“任务价值”和“进化价值”。
 
-> **客户阶段推进率**
+## 22.1 业务北极星
 
-## 20.2 一级指标
+> **高价值营销任务推进成功率**
+
+定义：
+
+任务完成后，是否达成任务预设的业务目标或明确推动 Workspace 进入下一状态。
+
+示例：
+
+- 提案完成并进入下一轮
+- 会议达成预设目标
+- 方案获得采用
+- 客户给出关键反馈
+- 项目完成关键决策
+
+## 22.2 进化北极星
+
+> **相似任务质量增益**
+
+观察同类任务随使用时间变化：
+
+- 一次通过率是否提升
+- 用户修改量是否下降
+- 补充上下文次数是否下降
+- 已验证 Experience 是否被正确复用
+- Outcome 是否改善
+
+## 22.3 一级指标
 
 | 指标 | 方向 |
 |---|---:|
-| 关键客户历史覆盖率 | ↑ |
-| 会前准备耗时 | ↓ |
-| 承诺遗漏率 | ↓ |
-| 超期未跟进率 | ↓ |
-| Next Action 采纳率 | ↑ |
-| 有效互动率 | ↑ |
-| 项目阶段推进率 | ↑ |
+| First-pass Adoption | ↑ |
+| User Edit Distance | ↓ |
+| Context Re-entry | ↓ |
+| Evidence Coverage | ↑ |
+| Fact Error Rate | ↓ |
+| Task Completion Time | ↓ |
+| Relevant Experience Reuse | ↑ |
+| Proactive Signal Actionability | ↑ |
+| User Override Rate | ↓ |
+| Outcome Success | ↑ |
 
-## 20.3 判断质量指标
+## 22.4 禁止虚荣指标
 
-- Evidence Coverage
-- Fact Error Rate
-- Action Specificity
-- Action Adoption
-- User Override Rate
-- Outcome Lift
+以下不能单独证明产品成功：
 
-## 20.4 自主进化指标
-
-V1 不用 Candidate 数量作为成功指标。
-
-重点看：
-
-- Candidate 被用户认可比例
-- 相似场景复现成功率
-- Candidate 对后续任务是否产生增益
-- 错误经验进入候选的比例
+- Memory 数量
+- Candidate 数量
+- 每日抓取信息数量
+- Agent 执行次数
+- Token 数量
+- SKILL 数量
 
 ---
 
-# 21. 人工确认 Gate
+# 23. Human Gate
 
 以下动作默认必须人工确认：
 
@@ -1102,267 +1250,313 @@ V1 不用 Candidate 数量作为成功指标。
 2. 报价
 3. 商务承诺
 4. 合同相关表达
-5. 涉及政府正式材料
-6. 涉及敏感客户数据的外发
-7. 修改关键客户事实
-8. 发布新的营销 Rule / Skill
+5. 政府正式材料提交
+6. 敏感数据外发
+7. 修改关键事实
+8. 接受高影响全局 Evolution Candidate
+9. 发布新的营销 Rule / SKILL
 
-低风险动作可自动执行：
+低风险动作可以自动：
 
 - 公开信息学习
-- 内部信息整理
-- 客户摘要
+- 内部资料整理
+- 研究
+- 草稿生成
 - 会前准备
+- 复盘候选生成
 - 提醒
-- 建议生成
-- 待办生成
 
 ---
 
-# 22. 产品层接口契约
+# 24. 产品层接口契约
 
-PRD 只定义产品需要的平台能力。
+只定义需求，不定义底层实现。
 
-## 22.1 AgentRuntimePort
-
-需求：
+## 24.1 AgentRuntimePort
 
 ```text
-run_task(goal, context, allowed_skills, policy)
+run_task(goal, workspace_context, allowed_skills, policy)
 ```
 
 产品关心：
 
-- 任务是否完成
-- 使用了哪些业务能力
-- 输出
-- 证据
+- 结果
 - 状态
+- 证据
+- 使用了哪些 SKILL
+- 使用了哪些 Experience
 
-产品不关心底层如何调度。
-
-## 22.2 MemoryPort
-
-需求：
+## 24.2 MemoryPort
 
 ```text
-query_customer_context(scope, query)
+query_context(scope, query)
 write_business_record(record, evidence)
+query_experiences(scope, task_context)
 ```
 
 产品关心：
 
-- 获取有效客户上下文
-- 写入经过业务规则允许的数据
-- 来源可追溯
+- 有效上下文
+- 来源
+- 适用范围
+- 可追溯性
 
-产品不定义通用记忆内部结构。
-
-## 22.3 ToolPort
-
-需求：
+## 24.3 ToolPort
 
 ```text
 search(source, query)
 execute(tool, input)
 ```
 
-产品只声明业务动作和权限。
-
-## 22.4 SkillPort
-
-需求：
+## 24.4 SkillPort
 
 ```text
 invoke(skill_id, input)
 evaluate(skill_id, test_case)
 ```
 
-产品定义 Marketing SKILL 契约。
-
-## 22.5 ApprovalPort
-
-需求：
+## 24.5 ApprovalPort
 
 ```text
 request_approval(action, reason, payload)
 ```
 
-必须返回：
+返回：
 
-- approved
-- rejected
-- approver
-- timestamp
-- modified_payload(optional)
+```text
+approved
+rejected
+approver
+timestamp
+modified_payload(optional)
+```
 
-## 22.6 EventPort
+## 24.6 EventPort
 
 产品需要订阅：
 
 ```text
-customer.updated
-interaction.created
-commitment.due
-signal.detected
-project.stage_changed
-action.completed
+workspace.updated
+material.added
+task.completed
+feedback.recorded
 outcome.recorded
+signal.detected
+candidate.created
+candidate.reviewed
 ```
 
-## 22.7 EvalPort
-
-需求：
+## 24.7 EvalPort
 
 ```text
 evaluate(candidate, baseline, criteria)
 ```
 
-营销产品负责给出业务评价标准。
+Marketing Product 定义业务评价标准。
 
 ---
 
-# 23. MVP 主流程
+# 25. MVP 主流程
 
-## 流程 A：导入客户
+## 流程 A：喂资料
 
 ```text
-新增客户
+创建 Workspace
 ↓
-导入资料
+给出目标
 ↓
-识别人员 / 项目 / 历史互动
+上传资料 / 链接 / 历史内容
+↓
+系统提取 Context
 ↓
 用户确认关键事实
 ↓
-生成客户作战页
+Workspace Ready
 ```
 
-## 流程 B：每日经营
+## 流程 B：做任务
 
 ```text
-打开今日
+用户提出营销任务
 ↓
-查看新变化
+读取 Workspace Context
 ↓
-查看最重要动作
+匹配历史 Experience
 ↓
-进入客户作战页
+调用 SKILL
 ↓
-查看依据
+交付结果 + 依据 + 已应用经验
 ↓
-执行 / 修改 / 忽略
-↓
-记录结果
-```
-
-## 流程 C：会前准备
-
-```text
-选择会议
-↓
-生成 1 页 Brief
-↓
-查看最近变化 / 历史承诺 / 人物关系
-↓
-给出会议目标和问题
-↓
-会后导入结果
-```
-
-## 流程 D：任务复盘
-
-```text
-任务结束
+用户接受 / 修改 / 拒绝
 ↓
 记录 Outcome
 ↓
-比较预期与实际
+任务复盘
 ↓
-识别原因
+Experience Candidate
+```
+
+## 流程 C：每日自主学习
+
+```text
+Workspace Watch Scope
 ↓
-产生 Experience Candidate
+主动学习
 ↓
-进入进化中心待审
+发现新 Signal
+↓
+关联当前 Context
+↓
+判断影响
+↓
+生成今日更新
+↓
+需要时建议 Task / Action
+```
+
+## 流程 D：自主进化
+
+```text
+多个 Task / Feedback / Outcome
+↓
+发现重复模式
+↓
+生成 Candidate
+↓
+Evidence Check
+↓
+Eval
+↓
+用户确认
+↓
+限定适用范围
+↓
+下一次相似任务调用
+↓
+显示调用记录
 ```
 
 ---
 
-# 24. MVP 优先级
+# 26. MVP P0
 
-## P0 必须完成
+只做能够证明三件事的能力：
 
-- 客户列表
-- 客户作战页
-- 客户 / 人员 / 项目 / Interaction / Commitment
-- 时间线
-- 客户研究
-- 会前准备
-- 跟进建议
-- 今日行动
-- 证据引用
+> **记得住上下文、会主动学习、任务结果会反哺下一次。**
+
+P0：
+
+- Workspace
+- Goal
+- Material Feed
+- Context Build
+- 单 Marketing Agent
+- 6 个基础 SKILL
+- Task 运行记录
+- Artifact
+- Evidence 引用
+- 用户接受 / 修改 / 拒绝
 - Outcome 记录
-- 任务复盘
 - Experience Candidate
-
-## P1 MVP 后半段
-
-- 关系图
-- Signal 自动监测
-- 机会判断
-- 每日学习
-- 风险提醒
-- 进化中心
-
-## P2 后续
-
-- 自动化外部执行
-- 多渠道协同
-- 团队版
-- 多 Agent
-- 高净值 Relationship Pack
-- 行业专用 Pack
-- 自动 Skill 晋级
+- Candidate Review
+- Experience Match
+- 下一次任务显示“应用了什么经验”
+- Daily Learning
+- 今日页面
 
 ---
 
-# 25. V1 验收标准
+# 27. MVP 暂缓
 
-产品进入下一阶段前，必须完成真实客户验证。
+以下全部后移：
+
+- 完整客户 CRM
+- 完整联系人管理
+- 销售漏斗
+- 商机 Kanban
+- 关系网络大图
+- 自动外呼
+- 自动群发
+- Campaign Automation
+- 广告投放
+- 多 Agent
+- 团队复杂权限
+- 高净值专用 Pack
+- 政企专用 Pack
+- 自动 SKILL 发布
+
+等基础闭环验证后，再根据真实用户需求决定是否进入产品。
+
+---
+
+# 28. V1 验收标准
+
+产品进入下一阶段前必须完成真实任务验证。
 
 最低验收：
 
-1. 连续导入并经营 20 个真实关键客户
-2. 每个客户形成可用时间线
-3. 关键事实可追溯原始依据
-4. 系统每天能产生有效下一步动作
-5. 用户可接受 / 修改 / 拒绝建议
-6. 可记录实际 Outcome
-7. 可产生结构化 Experience Candidate
-8. Candidate 不自动生效
-9. 至少完成一轮“建议 → 执行 → Outcome → 复盘”完整闭环
-10. 能计算客户阶段推进率
+1. 建立至少 5 个真实 Workspace。
+2. 每个 Workspace 有真实历史资料。
+3. 连续完成至少 30 个真实营销任务。
+4. 任务覆盖研究、策略、内容、会议准备、复盘等多个类型。
+5. 关键事实能够追溯来源。
+6. 每个任务能够记录用户接受、修改或拒绝。
+7. 至少 15 个任务记录真实 Outcome。
+8. 能形成结构化 Experience Candidate。
+9. Candidate 不自动发布为 SKILL。
+10. 至少有 5 个 Candidate 在后续相似任务中被再次匹配。
+11. 用户可以看到系统在新任务中应用了什么历史经验。
+12. 至少有一类重复任务出现可观察的质量提升。
+13. Daily Learning 连续运行，并能产生与真实 Workspace 有关的有效 Signal。
 
 ---
 
-# 26. 产品终局
+# 29. 核心产品演示
 
-自主进化营销助理最终应形成三类长期资产：
+V1 Demo 必须用一个真实 Workspace 完成完整闭环。
+
+推荐演示顺序：
 
 ```text
-客户关系资产
+1. 喂入历史资料
+2. 系统快速理解项目
+3. 用户提出一个真实营销任务
+4. 系统交付结果
+5. 用户修改其中一个关键判断或表达
+6. 记录任务结果
+7. 系统形成 Experience Candidate
+8. 用户确认 Candidate
+9. 发起第二个相似任务
+10. 系统明确显示“本次应用了上次学到的方法”
+11. 第二次输出更贴近用户要求
+12. 展示当天主动学习发现的新 Signal
+```
+
+如果 Demo 无法清楚展示第 7—10 步，产品就仍然只是一个带上下文的营销 AI 助手。
+
+---
+
+# 30. 产品终局
+
+长期形成三类产品资产：
+
+```text
+业务上下文资产
 +
 营销经验资产
 +
-持续生长的业务能力资产
+持续进化的业务能力资产
 ```
 
-产品越长期使用，应表现出三个结果：
+最终用户感受到的变化：
 
-1. 越来越了解客户
-2. 越来越懂用户自己的营销方法
-3. 越来越少重复犯已经发生过的错误
+1. 新项目启动越来越快
+2. 历史项目可以持续复用
+3. 助理越来越理解用户自己的判断方式
+4. 重要变化能够主动送到用户面前
+5. 相似任务质量持续提升
+6. 团队营销方法可以从个人经验变成长期资产
 
-V1 的任务只有一个：
+终局产品价值：
 
-> **先证明这套闭环能持续推动真实客户往前走。**
+> **让一个营销高手做过的每一件事，都能成为下一次做得更好的起点。**
