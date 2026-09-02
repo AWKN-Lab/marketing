@@ -4,6 +4,7 @@ import { callMarketingProduct } from "@/lib/product-client";
 import { validateStableEntityAck, type MarketingProductResponse, type ProductOperation } from "@/lib/product-contract";
 import { parsePersistedValue, serializePersistedValue } from "@/lib/persistence";
 import { snapshotFingerprint } from "@/lib/reconcile";
+import { scopedStorageKey } from "@/lib/storage-scope";
 
 export type SyncState = "syncing" | "synced" | "local-only" | "sync-error";
 export type SyncRecord = { entityKey: string; operation: ProductOperation; state: SyncState; updatedAt: string; traceId?: string; error?: string; platformRevision?: number; syncedFingerprint?: string };
@@ -18,7 +19,7 @@ export function syncRecordFromResponse(input: { entityKey: string; operation: Pr
 
 function readAllRecords() {
   if (typeof window === "undefined") return {} as Record<string, SyncRecord>;
-  return parsePersistedValue<Record<string, SyncRecord>>(window.localStorage.getItem(SYNC_RECORDS_KEY), {});
+  return parsePersistedValue<Record<string, SyncRecord>>(window.localStorage.getItem(scopedStorageKey(SYNC_RECORDS_KEY)), {});
 }
 
 function writeRecord(record: SyncRecord) {
@@ -31,7 +32,7 @@ function writeRecord(record: SyncRecord) {
     platformRevision: record.platformRevision ?? previous?.platformRevision,
     syncedFingerprint: record.syncedFingerprint ?? previous?.syncedFingerprint,
   };
-  window.localStorage.setItem(SYNC_RECORDS_KEY, serializePersistedValue({ ...current, [record.entityKey]: merged }));
+  window.localStorage.setItem(scopedStorageKey(SYNC_RECORDS_KEY), serializePersistedValue({ ...current, [record.entityKey]: merged }));
   window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { entityKey: record.entityKey } }));
 }
 
@@ -46,15 +47,7 @@ function inferSnapshot(payload: unknown) {
 }
 
 export function markPlatformSnapshotAccepted(input: { entityKey: string; operation: ProductOperation; revision: number; snapshot: unknown; traceId?: string }) {
-  writeRecord({
-    entityKey: input.entityKey,
-    operation: input.operation,
-    state: "synced",
-    updatedAt: new Date().toISOString(),
-    traceId: input.traceId,
-    platformRevision: input.revision,
-    syncedFingerprint: snapshotFingerprint(input.snapshot),
-  });
+  writeRecord({ entityKey: input.entityKey, operation: input.operation, state: "synced", updatedAt: new Date().toISOString(), traceId: input.traceId, platformRevision: input.revision, syncedFingerprint: snapshotFingerprint(input.snapshot) });
 }
 
 export async function syncMarketingProduct<TPayload>(input: { entityKey: string; operation: ProductOperation; workspaceId?: string; taskId?: string; idempotencyKey?: string; expectedEntityId?: string; payload: TPayload; snapshot?: unknown }) {

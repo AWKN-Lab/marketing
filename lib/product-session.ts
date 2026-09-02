@@ -1,0 +1,106 @@
+export const MARKETING_CAPABILITIES = [
+  "workspace.read",
+  "workspace.create",
+  "workspace.write",
+  "material.write",
+  "task.create",
+  "task.run",
+  "feedback.write",
+  "outcome.write",
+  "evolution.review",
+  "learning.manage",
+  "team.manage",
+] as const;
+
+export type MarketingCapability = (typeof MARKETING_CAPABILITIES)[number];
+export type WorkspaceAccess = "read" | "write" | "admin";
+
+export type WorkspaceGrant = {
+  workspaceId: string;
+  access: WorkspaceAccess;
+};
+
+export type MarketingSession = {
+  mode: "local" | "platform";
+  tenant: { id: string; name: string };
+  actor: { id: string; name: string };
+  roles: string[];
+  capabilities: MarketingCapability[];
+  workspaceGrants: WorkspaceGrant[];
+  teamEnabled: boolean;
+};
+
+const LOCAL_CAPABILITIES: MarketingCapability[] = MARKETING_CAPABILITIES.filter((item) => item !== "team.manage");
+
+export const LOCAL_MARKETING_SESSION: MarketingSession = {
+  mode: "local",
+  tenant: { id: "local", name: "Local P0" },
+  actor: { id: "local-owner", name: "Local Owner" },
+  roles: ["owner"],
+  capabilities: LOCAL_CAPABILITIES,
+  workspaceGrants: [],
+  teamEnabled: false,
+};
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function text(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function strings(value: unknown) {
+  return Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+}
+
+function normalizeCapability(value: string): MarketingCapability | null {
+  return (MARKETING_CAPABILITIES as readonly string[]).includes(value) ? value as MarketingCapability : null;
+}
+
+function normalizeWorkspaceAccess(value: unknown): WorkspaceAccess {
+  const access = text(value).toLowerCase();
+  if (access === "admin" || access === "write") return access;
+  return "read";
+}
+
+export function normalizeMarketingSession(input: unknown): MarketingSession | null {
+  const root = record(input);
+  if (!root) return null;
+  const row = record(root.data) ?? root;
+  const tenantRow = record(row.tenant);
+  const actorRow = record(row.actor ?? row.user);
+  const tenantId = text(row.tenant_id ?? tenantRow?.id);
+  const actorId = text(row.actor_id ?? row.user_id ?? actorRow?.id);
+  if (!tenantId || !actorId) return null;
+
+  const capabilities = strings(row.capabilities).map(normalizeCapability).filter((value): value is MarketingCapability => Boolean(value));
+  const grants = Array.isArray(row.workspace_grants ?? row.workspaceGrants) ? row.workspace_grants ?? row.workspaceGrants : [];
+  const workspaceGrants: WorkspaceGrant[] = (grants as unknown[]).flatMap((item) => {
+    const grant = record(item);
+    const workspaceId = text(grant?.workspace_id ?? grant?.workspaceId);
+    return workspaceId ? [{ workspaceId, access: normalizeWorkspaceAccess(grant?.access) }] : [];
+  });
+
+  return {
+    mode: text(row.mode).toLowerCase() === "local" ? "local" : "platform",
+    tenant: { id: tenantId, name: text(tenantRow?.name ?? row.tenant_name) || tenantId },
+    actor: { id: actorId, name: text(actorRow?.name ?? actorRow?.display_name ?? row.actor_name) || actorId },
+    roles: strings(row.roles),
+    capabilities,
+    workspaceGrants,
+    teamEnabled: Boolean(row.team_enabled ?? row.teamEnabled ?? true),
+  };
+}
+
+export function hasMarketingCapability(session: MarketingSession, capability: MarketingCapability) {
+  return session.capabilities.includes(capability);
+}
+
+const accessRank: Record<WorkspaceAccess, number> = { read: 1, write: 2, admin: 3 };
+
+export function hasWorkspaceAccess(session: MarketingSession, workspaceId: string, required: WorkspaceAccess) {
+  if (session.mode === "local") return true;
+  const grant = session.workspaceGrants.find((item) => item.workspaceId === workspaceId);
+  return Boolean(grant && accessRank[grant.access] >= accessRank[required]);
+}

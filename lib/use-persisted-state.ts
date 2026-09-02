@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parsePersistedValue, serializePersistedValue } from "@/lib/persistence";
+import { scopedStorageKey } from "@/lib/storage-scope";
 
 export const PERSISTED_STATE_EVENT = "awkn-marketing:persisted-state";
 let persistedStateInstance = 0;
 
 export function usePersistedState<T>(key: string, initialValue: T) {
+  const storageKey = scopedStorageKey(key);
   const [value, setValue] = useState<T>(initialValue);
   const [hydrated, setHydrated] = useState(false);
   const suppressNextWrite = useRef(false);
@@ -14,8 +16,9 @@ export function usePersistedState<T>(key: string, initialValue: T) {
   const instanceId = useRef(`persisted-${++persistedStateInstance}`);
 
   useEffect(() => {
+    setHydrated(false);
     try {
-      const saved = window.localStorage.getItem(key);
+      const saved = window.localStorage.getItem(storageKey);
       const next = parsePersistedValue(saved, initialValue);
       lastSerialized.current = saved ?? serializePersistedValue(next);
       setValue(next);
@@ -24,12 +27,12 @@ export function usePersistedState<T>(key: string, initialValue: T) {
     } finally {
       setHydrated(true);
     }
-  }, [key]);
+  }, [storageKey]);
 
   useEffect(() => {
     const applyStoredValue = () => {
       try {
-        const saved = window.localStorage.getItem(key);
+        const saved = window.localStorage.getItem(storageKey);
         const serialized = saved ?? serializePersistedValue(initialValue);
         if (serialized === lastSerialized.current) return;
         lastSerialized.current = serialized;
@@ -42,10 +45,10 @@ export function usePersistedState<T>(key: string, initialValue: T) {
     const onCustom = (event: Event) => {
       const custom = event as CustomEvent<{ key?: string; source?: string }>;
       if (custom.detail?.source === instanceId.current) return;
-      if (custom.detail?.key === key) applyStoredValue();
+      if (custom.detail?.key === storageKey) applyStoredValue();
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === key) applyStoredValue();
+      if (event.key === storageKey) applyStoredValue();
     };
     window.addEventListener(PERSISTED_STATE_EVENT, onCustom);
     window.addEventListener("storage", onStorage);
@@ -53,7 +56,7 @@ export function usePersistedState<T>(key: string, initialValue: T) {
       window.removeEventListener(PERSISTED_STATE_EVENT, onCustom);
       window.removeEventListener("storage", onStorage);
     };
-  }, [key]);
+  }, [storageKey]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -64,13 +67,13 @@ export function usePersistedState<T>(key: string, initialValue: T) {
     try {
       const serialized = serializePersistedValue(value);
       if (serialized === lastSerialized.current) return;
-      window.localStorage.setItem(key, serialized);
+      window.localStorage.setItem(storageKey, serialized);
       lastSerialized.current = serialized;
-      window.dispatchEvent(new CustomEvent(PERSISTED_STATE_EVENT, { detail: { key, source: instanceId.current } }));
+      window.dispatchEvent(new CustomEvent(PERSISTED_STATE_EVENT, { detail: { key: storageKey, source: instanceId.current } }));
     } catch {
-      // P0: local persistence failure must not block task use.
+      // Local persistence failure must not block task use.
     }
-  }, [hydrated, key, value]);
+  }, [hydrated, storageKey, value]);
 
   return [value, setValue, hydrated] as const;
 }
