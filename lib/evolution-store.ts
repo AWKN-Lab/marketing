@@ -1,4 +1,4 @@
-import type { EvolutionCandidate } from "@/lib/types";
+import type { AppliedExperience, EvolutionCandidate } from "@/lib/types";
 
 export type LocalEvolutionCandidate = EvolutionCandidate & {
   createdAt: string;
@@ -9,6 +9,8 @@ export type LocalEvolutionCandidate = EvolutionCandidate & {
   polarity?: "positive" | "caution" | "negative";
   fingerprint?: string;
 };
+
+export type EvolutionReviewDecision = "accepted" | "scoped" | "rejected";
 
 export const LOCAL_CANDIDATES_KEY = "marketing:evolution:candidates";
 export const EVOLUTION_REVIEWS_KEY = "marketing:evolution:reviews";
@@ -61,4 +63,36 @@ export function createExperienceCandidate(input: {
     counterexample: "任务类型、目标、受众、交付形式或业务阶段显著变化时重新验证",
     confidence,
   };
+}
+
+export function matchReviewedExperience(input: {
+  candidates: LocalEvolutionCandidate[];
+  reviews: Record<string, string>;
+  workspaceId: string;
+  taskType: string;
+  maxExperiences?: number;
+  maxCounterexamples?: number;
+}): { experiences: AppliedExperience[]; counterexamples: LocalEvolutionCandidate[] } {
+  const approved = input.candidates
+    .filter((candidate) => candidate.sourceTaskType === input.taskType)
+    .filter((candidate) => {
+      const review = input.reviews[candidate.id];
+      return review === "accepted" || (review === "scoped" && candidate.workspaceId === input.workspaceId);
+    });
+
+  const experiences = approved
+    .filter((candidate) => candidate.polarity !== "negative")
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, input.maxExperiences ?? 3)
+    .map((candidate) => ({
+      lesson: candidate.lesson,
+      source: `${candidate.source} · 已审核 · ${Math.round(candidate.confidence * 100)}%`,
+    }));
+
+  const counterexamples = approved
+    .filter((candidate) => candidate.polarity === "negative")
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, input.maxCounterexamples ?? 2);
+
+  return { experiences, counterexamples };
 }

@@ -2,8 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { AppliedExperience, MarketingTask } from "@/lib/types";
-import { EVOLUTION_REVIEWS_KEY, LOCAL_CANDIDATES_KEY, type LocalEvolutionCandidate } from "@/lib/evolution-store";
+import type { MarketingTask } from "@/lib/types";
+import {
+  EVOLUTION_REVIEWS_KEY,
+  LOCAL_CANDIDATES_KEY,
+  matchReviewedExperience,
+  type LocalEvolutionCandidate,
+} from "@/lib/evolution-store";
 import { createLocalTask, LOCAL_TASKS_KEY, taskTypes } from "@/lib/task-store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
@@ -18,18 +23,12 @@ export function NewTaskButton({ workspaceId, workspaceName, label = "新任务" 
   const [goal, setGoal] = useState("");
   const [prompt, setPrompt] = useState("");
 
-  const matchedExperiences: AppliedExperience[] = candidates
-    .filter((candidate) => candidate.sourceTaskType === type)
-    .filter((candidate) => reviews[candidate.id] === "accepted" || (reviews[candidate.id] === "scoped" && candidate.workspaceId === workspaceId))
-    .filter((candidate) => candidate.polarity !== "negative")
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3)
-    .map((candidate) => ({ lesson: candidate.lesson, source: `${candidate.source} · 已审核 · ${Math.round(candidate.confidence * 100)}%` }));
-
-  const counterexamples = candidates
-    .filter((candidate) => candidate.sourceTaskType === type && candidate.polarity === "negative")
-    .filter((candidate) => reviews[candidate.id] === "accepted" || (reviews[candidate.id] === "scoped" && candidate.workspaceId === workspaceId))
-    .slice(0, 2);
+  const { experiences: matchedExperiences, counterexamples } = matchReviewedExperience({
+    candidates,
+    reviews,
+    workspaceId,
+    taskType: type,
+  });
 
   function createTask() {
     if (!title.trim() || !goal.trim() || !prompt.trim()) return;
