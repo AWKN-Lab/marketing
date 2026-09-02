@@ -21,31 +21,58 @@ npm run dev
 
 ## 接入 AWKN 产品接口
 
-复制 `.env.example` 为 `.env.local`：
+复制 `.env.example` 为 `.env.local`。
+
+### 任务对话
 
 ```bash
-AWKN_MARKETING_AGENT_URL=http://your-awkn-product-endpoint
+AWKN_MARKETING_AGENT_URL=http://your-awkn-agent-product-endpoint
 AWKN_MARKETING_AGENT_TOKEN=
 ```
 
-前端只调用本仓库 `/api/agent`。该 Route Handler 负责将产品语义请求转发给 AWKN 平台，不在本仓库实现 Agent Runtime、Memory、MCP 或通用 Skill Runtime。
+assistant-ui 只调用本仓库 `/api/agent`，由 Route Handler 转发到 AWKN。
 
-当前约定上游请求：
+### 通用产品操作
+
+```bash
+AWKN_MARKETING_API_URL=http://your-awkn-marketing-product-endpoint
+AWKN_MARKETING_API_TOKEN=
+```
+
+前端产品层可通过 `/api/product` 发送统一业务语义请求。当前操作包括：
+
+- `workspace.create` / `workspace.update`
+- `material.feed`
+- `task.create` / `task.run`
+- `feedback.record`
+- `outcome.record`
+- `evolution.review`
+- `learning.watch.upsert` / `learning.run`
+
+最小请求：
 
 ```json
 {
   "product": "awkn-marketing",
-  "task_id": "...",
-  "workspace_id": "...",
-  "messages": [{ "role": "user", "content": "..." }]
+  "operation": "task.run",
+  "request_id": "req_xxx",
+  "workspace_id": "ws_xxx",
+  "task_id": "task_xxx",
+  "payload": {}
 }
 ```
 
-上游最小响应：
+最小响应：
 
 ```json
-{ "text": "...", "evidence": [], "artifact": null }
+{
+  "ok": true,
+  "data": {},
+  "trace_id": "trace_xxx"
+}
 ```
+
+这只是**产品层 Adapter Contract**。本仓库不实现 Agent Runtime、Memory、MCP、通用 Skill Runtime，也不定义它们内部协议。
 
 ## P0 本地状态
 
@@ -61,7 +88,7 @@ AWKN_MARKETING_AGENT_TOKEN=
 - Evolution Review
 - Daily Learning Watch Scope
 
-这是产品验证层，后续由产品 Adapter 替换为 AWKN 平台持久化。
+Demo 数据与真实本地数据隔离；真实状态产生后优先展示真实状态。
 
 ## 验证
 
