@@ -4,6 +4,7 @@ import {
   createExperienceCandidate,
   matchReviewedExperience,
 } from "../lib/evolution-store.ts";
+import { buildP0Metrics } from "../lib/eval.ts";
 
 function candidate(input: { taskId: string; workspaceId: string; taskType: string; outcome: string; note?: string }) {
   const fingerprint = candidateFingerprint({
@@ -52,4 +53,15 @@ assert.equal(otherWorkspace.experiences.length, 0);
 const rejected = matchReviewedExperience({ candidates: [positive], reviews: { [positive.id]: "rejected" }, workspaceId: "w1", taskType: "策略判断" });
 assert.equal(rejected.experiences.length, 0);
 
-console.log("P0 acceptance passed: evolution learning boundaries are enforced.");
+const metrics = buildP0Metrics([
+  { taskId: "a", taskType: "策略判断", feedback: "修改后采用", outcome: "方案采用", editCount: 8, appliedExperienceCount: 0 },
+  { taskId: "b", taskType: "策略判断", feedback: "采用", outcome: "项目推进", editCount: 3, appliedExperienceCount: 1 },
+]);
+assert.equal(metrics.totalTasks, 2);
+assert.equal(metrics.feedbackCoverage, 1);
+assert.equal(metrics.outcomeSuccessRate, 1);
+assert.equal(metrics.experienceReuseRate, 0.5);
+assert.equal(metrics.repeatedTaskTypes[0].editDelta, -5);
+assert.equal(metrics.improvedTaskTypes, 1);
+
+console.log("P0 acceptance passed: evolution learning and product-eval boundaries are enforced.");
