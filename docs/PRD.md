@@ -1,58 +1,58 @@
 # 自主进化营销助理 PRD
 
 > 仓库：`AWKN-Lab/marketing`  
-> 文档状态：V1.0  
+> 文档版本：V1.1  
 > 文档定位：产品母文档  
-> 当前阶段：产品定义 / MVP 范围确认  
+> 当前阶段：产品结构 / MVP / 领域模型 / SKILL 契约  
+> 边界：仅定义产品层。底层能力只预留接口，不展开内部实现。
 
 ---
 
-# 1. 一页结论
+# 1. 产品结论
 
 ## 1.1 产品定义
 
 **自主进化营销助理**是一款面向关键客户经营场景的垂直营销产品。
 
-它持续记住客户、机构、项目、关系、沟通、承诺与结果，主动发现新的业务变化，结合历史经验判断下一步动作，并在每次真实任务结束后沉淀可验证的营销经验。
+它帮助用户持续经营重要客户：
 
-第一阶段只解决一个核心问题：
+- 记住客户与项目历史
+- 发现新的业务变化
+- 判断当前机会和风险
+- 给出下一步行动
+- 跟踪结果
+- 从真实任务中沉淀可验证经验
 
-> **让重要客户持续被经营，让该跟进的客户不遗漏，让新的机会更早被发现，让下一步行动有依据。**
+第一阶段只验证一个核心问题：
 
----
+> **系统能否比人更持续地经营 20 个真实关键客户。**
 
-# 2. 产品战略
-
-## 2.1 对外卖什么
+## 1.2 对外卖什么
 
 不卖：
 
 - 企业 Memory Layer
 - 通用 AI 助手
-- 聊天机器人
+- 通用 CRM
 - Agent 平台
-- AI CRM 概念
+- 技术基础设施
 
 对外卖：
 
 > **关键客户持续经营能力。**
 
-客户购买的结果包括：
+客户购买的直接结果：
 
-1. 客户历史不丢失
-2. 重要承诺不遗漏
-3. 新变化更早发现
-4. 每次跟进前直接获得行动建议
-5. 关键关系与项目持续推进
-6. 企业营销经验持续沉淀
+1. 重要客户不漏跟
+2. 历史信息不丢失
+3. 客户变化更早发现
+4. 下一步行动更明确
+5. 关键项目持续往前推进
+6. 团队经验可持续积累
 
-## 2.2 品类定义
+## 1.3 产品主张
 
-建议产品品类：
-
-# 关键客户经营智能体
-
-品牌主张可使用：
+品牌表达可使用：
 
 > **生意不能忘。**
 
@@ -62,120 +62,67 @@
 
 ---
 
-# 3. 目标用户
+# 2. 产品边界
 
-## 3.1 第一阶段用户
+## 2.1 本产品负责
 
-优先面向需要长期经营关键关系的组织与个人：
+自主进化营销助理只负责营销产品层：
 
-- 企业老板
-- 市场负责人
-- 商务负责人
-- 大客户销售
-- 政企客户负责人
-- 战略客户负责人
+- Marketing Domain
+- Marketing Agent
+- Marketing SKILL
+- Marketing Eval
+- 产品交互
+- 客户经营工作流
+- 业务状态
+- 业务规则
+- 业务成功标准
+- 产品层权限与人工确认节点
 
-## 3.2 第一阶段推荐切口
+## 2.2 本产品不负责
 
-MVP 优先验证：
+禁止在本产品中重复建设：
 
-> **政企 / 大客户关键客户经营。**
+- Agent Runtime
+- 通用任务编排内核
+- 通用记忆引擎
+- 通用 MCP 框架
+- 通用 Tool Registry
+- 通用执行 Harness
+- 通用 Skill Runtime
+- 通用模型路由
+- 通用长期记忆生命周期
 
-原因：
+以上能力统一视为 AWKN 平台依赖。
 
-- 客户数量有限但单客价值高
-- 决策链复杂
-- 历史信息分散
-- 跟进周期长
-- 项目变化频繁
-- 关系连续性重要
-- 人员交接损失大
-- 对“上下文长期连续”需求强
+## 2.3 预留平台接口
 
-高净值客户经营可作为后续独立业务 Pack，不与第一阶段混做。
+产品层只声明能力需求，不约束底层实现。
 
----
+预留接口类型：
 
-# 4. 核心问题
+1. `AgentRuntimePort`
+2. `MemoryPort`
+3. `ToolPort`
+4. `SkillPort`
+5. `ApprovalPort`
+6. `EventPort`
+7. `EvalPort`
 
-当前关键客户经营通常存在六类问题。
+所有接口遵循：
 
-## 4.1 客户历史散落
-
-信息分布在：
-
-- 微信
-- 邮件
-- 会议纪要
-- 文档
-- 报价
-- CRM
-- 个人笔记
-- 网页资料
-- 人脑
-
-结果：同一个客户无法形成连续完整的经营上下文。
-
-## 4.2 承诺容易遗漏
-
-例如：
-
-- 下周给方案
-- 月底重新沟通
-- 等领导确认
-- 等预算下来
-- 等招标
-- 补资料
-- 介绍某联系人
-
-这些信息往往存在沟通文本中，没有形成持续执行状态。
-
-## 4.3 外部变化无法持续盯住
-
-例如：
-
-- 政策更新
-- 人事调整
-- 招投标信息
-- 新项目
-- 企业新闻
-- 组织变化
-- 竞争动态
-
-销售依赖人工搜索，信息出现与业务动作之间存在延迟。
-
-## 4.4 下一步动作依赖个人经验
-
-同一客户交给不同销售，判断质量差异巨大。
-
-经验通常无法结构化沉淀，也无法在下一次类似情境中自动复用。
-
-## 4.5 复盘无法形成组织能力
-
-多数复盘最终停留在：
-
-- 一次会议总结
-- 一篇文档
-- 一个人的经验
-
-失败原因、成功路径、适用边界无法持续进入新的工作流程。
-
-## 4.6 客户数量增加后，人开始忘
-
-真正稀缺的资源并非客户资料，而是：
-
-> **对每一个重要客户持续保持正确上下文的能力。**
+> 产品定义业务语义，平台负责通用执行能力。
 
 ---
 
-# 5. 产品核心闭环
+# 3. 核心业务闭环
 
-产品统一采用以下业务闭环：
+产品核心公式：
 
 ```text
 Signal
   ↓
-Memory
+Customer State
   ↓
 Judgment
   ↓
@@ -183,960 +130,1239 @@ Action
   ↓
 Outcome
   ↓
-Evolve
+Experience
+  ↓
+Evolution Candidate
 ```
 
-对应业务语言：
+对应业务含义：
 
-```text
-发生了什么
-↓
-这个客户现在是什么状态
-↓
-这意味着什么
-↓
-今天应该做什么
-↓
-客户有没有往前推进
-↓
-这次学到了什么
-```
-
-这条闭环是产品的最高业务逻辑。
+| 环节 | 产品回答的问题 |
+|---|---|
+| Signal | 客户或外部环境发生了什么变化 |
+| Customer State | 这个客户现在处于什么状态 |
+| Judgment | 当前最值得关注的机会、风险和阻塞是什么 |
+| Action | 今天应该做什么 |
+| Outcome | 做完以后客户有没有往前推进 |
+| Experience | 这次任务学到了什么 |
+| Evolution Candidate | 哪些经验值得成为可复用能力 |
 
 ---
 
-# 6. 产品信息架构
+# 4. MVP 目标
 
-MVP 控制在五个一级页面。
+## 4.1 MVP 验证目标
+
+选择 20 个真实关键客户，连续经营。
+
+系统必须做到：
+
+1. 建立完整客户档案
+2. 聚合客户历史
+3. 识别关键变化
+4. 给出最多 3 个下一步动作
+5. 所有重要判断可追溯依据
+6. 用户执行后记录结果
+7. 从结果中形成 Experience Candidate
+8. 不自动发布进化结果
+
+## 4.2 MVP 不做
+
+V1 暂不做：
+
+- 全量 CRM 替代
+- 自动外呼
+- 全自动邮件发送
+- 全自动商务承诺
+- 全自动报价
+- 全自动政府正式材料提交
+- 多 Agent 群体协作
+- 自动发布 Skill
+- 自动修改核心业务规则
+- 高净值客户与政企客户同时建两套产品
+
+---
+
+# 5. 产品组件树
 
 ```text
-营销助理
-├─ 今日
-├─ 客户
-├─ 机会
-├─ 对话
-└─ 学习
+Marketing Product
+│
+├─ 01 今日工作台
+│  ├─ 今日重点客户
+│  ├─ 今日行动
+│  ├─ 新变化
+│  ├─ 到期承诺
+│  ├─ 风险预警
+│  └─ 待确认建议
+│
+├─ 02 客户中心
+│  ├─ 客户列表
+│  ├─ 客户详情
+│  ├─ 联系人
+│  ├─ 关系网络
+│  ├─ 项目 / 机会
+│  ├─ 沟通时间线
+│  ├─ 承诺
+│  ├─ 客户状态
+│  └─ 下一步行动
+│
+├─ 03 项目与机会
+│  ├─ 项目列表
+│  ├─ 机会列表
+│  ├─ 阶段
+│  ├─ 决策链
+│  ├─ 阻塞
+│  ├─ 风险
+│  ├─ 竞争态势
+│  └─ 推进记录
+│
+├─ 04 营销助理
+│  ├─ 对话
+│  ├─ 客户研究
+│  ├─ 会前准备
+│  ├─ 关系分析
+│  ├─ 机会判断
+│  ├─ 跟进建议
+│  ├─ 文案生成
+│  └─ 复盘
+│
+├─ 05 学习中心
+│  ├─ 每日学习
+│  ├─ 外部信号
+│  ├─ 学习记录
+│  ├─ Experience Candidate
+│  └─ 待确认知识
+│
+├─ 06 进化中心
+│  ├─ Candidate
+│  ├─ 证据
+│  ├─ 适用边界
+│  ├─ 反例
+│  ├─ Eval 结果
+│  ├─ 人工审批
+│  └─ 版本历史
+│
+└─ 07 设置
+   ├─ 客户范围
+   ├─ 数据源
+   ├─ 权限
+   ├─ 通知
+   ├─ 人工确认策略
+   └─ 业务目标
 ```
 
 ---
 
-# 7. 首页｜今日
+# 6. 核心页面
 
-首页不做数据驾驶舱。
+## 6.1 页面一：今日工作台
 
-首页只回答：
+### 目标
 
-> **今天最应该处理什么？**
+用户打开产品后 30 秒内知道：
 
-## 7.1 今日行动
+> **今天最值得推进什么。**
 
-默认最多展示 5 个最高优先级事项。
+### 页面结构
+
+#### A. 今日最重要的 5 件事
 
 每条必须包含：
 
-- 客户 / 机构
-- 建议动作
-- 建议原因
-- 证据
-- 时间要求
-- 当前风险
+- 客户
+- 项目 / 机会
+- 推荐动作
+- 推荐原因
+- 紧急度
+- 依据
+- 是否需要人工确认
 
 示例：
 
 ```text
-厦门某文旅客户
-
-建议：本周重新联系项目负责人
-
+厦门某文旅部门
+建议：今天联系项目负责人确认 Q4 活动规划
 原因：
-- 上次承诺本周反馈方案
-- 已 8 天无新增沟通
-- 最新政策出现相关专项方向
-
-建议动作：
-1. 发送政策相关案例
-2. 确认项目当前内部状态
-3. 询问下一次汇报节点
+- 上次会议约定本周确认
+- 过去 6 天没有新互动
+- 昨日发布新的文旅促消费政策
 ```
 
-## 7.2 今日变化
+#### B. 新变化
 
-展示与已有关键客户相关的新变化：
+展示：
 
-- 政策
-- 新闻
-- 人事
-- 招标
-- 项目
-- 组织
-- 舆情
-- 公开信息
+- 人员变化
+- 政策变化
+- 项目变化
+- 客户公开动态
+- 企业动态
+- 采购动态
+- 竞争动态
 
-只推送与当前客户经营相关的信息。
+#### C. 待处理承诺
 
-禁止做成通用资讯流。
+展示：
 
-## 7.3 今日风险
+- 我方承诺
+- 客户承诺
+- 截止日期
+- 当前状态
+
+#### D. 风险预警
 
 例如：
 
-- 14 天未跟进
-- 承诺即将超期
-- 关键联系人变化
-- 项目长期无进展
-- 原判断与新事实冲突
-- 负责人变化
+- 30 天无实质推进
+- 关键联系人离职
+- 项目预算变化
+- 竞争对手进入
+- 已承诺事项逾期
+- 决策链缺失
 
 ---
 
-# 8. 客户页｜客户作战页
+# 7. 客户作战页
 
-每一个重要客户只有一张核心作战页。
+客户作战页是 MVP 最重要页面。
 
-目标：
+## 7.1 页面目标
 
-> **30 秒恢复这个客户的完整上下文。**
+回答六个问题：
 
-## 8.1 基础对象
+1. 我们知道什么
+2. 最近发生什么
+3. 现在是什么状态
+4. 有什么机会和风险
+5. 今天应该做什么
+6. 做完以后怎么样
 
-每个客户至少维护：
+## 7.2 页面模块
+
+### A. 客户摘要
 
 - 客户名称
-- 机构
-- 部门
-- 联系人
-- 角色
-- 关系
+- 客户类型
+- 当前关系阶段
 - 当前项目
 - 当前机会
-- 当前需求
-- 历史沟通
-- 承诺
-- 风险
-- 下一步行动
+- 关键联系人
+- 最近互动
+- 下一关键时间点
 
-## 8.2 客户作战页六个区域
+### B. 客户关系图
 
-### A. 我们知道什么
+展示：
 
 - 人
-- 组织
-- 项目
-- 需求
+- 部门
+- 角色
 - 关系
-- 偏好
-- 历史合作
-- 关键事实
+- 决策影响力
+- 我方连接人
 
-### B. 最近发生什么
+### C. 时间线
 
-- 新沟通
-- 新会议
-- 新文件
-- 新闻
-- 政策
-- 人事
+统一展示：
+
+- 会议
+- 消息
+- 邮件
+- 文件
+- 电话记录
 - 项目变化
+- 外部信号
+- 承诺
+- 决策
+- Outcome
 
-### C. 当前状态
+### D. 当前判断
 
-产品生成当前判断：
+统一输出：
 
-- 关系温度
+- 客户状态
 - 项目阶段
-- 机会强度
-- 当前阻塞
-- 主要风险
-- 信息缺口
+- 机会等级
+- 关系温度
+- 关键阻塞
+- 当前风险
+- 建议策略
 
-### D. 下一步动作
+### E. 下一步行动
 
-最多给出 3 个动作。
+最多 3 条。
 
-动作必须：
+每一条必须回答：
 
-- 具体
-- 可执行
-- 有时间点
-- 有原因
-- 有证据
+- 做什么
+- 找谁
+- 为什么现在做
+- 预期结果
+- 风险
+- 依据
 
-### E. 为什么
+### F. 证据抽屉
 
-任何关键判断均可追溯到原始依据：
+任何关键判断均可展开查看：
 
 - 原消息
-- 原邮件
 - 原会议
 - 原文件
 - 原网页
-- 历史案例
-
-### F. 结果
-
-用户完成动作后记录：
-
-- 未执行
-- 已执行
-- 无反馈
-- 有反馈
-- 推进
-- 暂停
-- 失败
-- 成交
-
-结果进入后续复盘与学习。
+- 原历史记录
+- 历史 Experience
 
 ---
 
-# 9. 机会页
+# 8. Marketing Domain Model
 
-机会页管理“值得推进的事情”，不等同于传统 CRM Pipeline。
+## 8.1 Account
 
-## 9.1 机会来源
+代表一个需要持续经营的客户主体。
 
-机会可来自：
+核心字段：
 
-- 用户手动创建
-- 历史沟通识别
-- 新政策
-- 新项目
-- 招投标
-- 客户需求
-- 组织变化
-- 人事变化
-- Agent 主动发现
+| 字段 | 含义 |
+|---|---|
+| account_id | 唯一 ID |
+| name | 客户名称 |
+| account_type | 政府 / 企业 / 机构 / 其他 |
+| industry | 行业 |
+| region | 地区 |
+| owner | 内部负责人 |
+| priority | 优先级 |
+| relationship_stage | 关系阶段 |
+| status | 活跃 / 暂停 / 结束 |
+| last_interaction_at | 最近互动时间 |
+| next_action_at | 下一动作时间 |
+| tags | 标签 |
 
-## 9.2 机会状态
+## 8.2 Organization
 
-建议第一版使用：
+用于表示客户内部组织结构。
+
+字段：
+
+- organization_id
+- account_id
+- name
+- organization_type
+- parent_id
+- responsibility
+- region
+- status
+
+## 8.3 Person
+
+字段：
+
+- person_id
+- account_id
+- organization_id
+- name
+- title
+- role
+- influence_level
+- decision_role
+- contact_channel
+- relationship_strength
+- preferences
+- concerns
+- last_interaction_at
+- status
+
+## 8.4 Relationship
+
+字段：
+
+- relationship_id
+- subject_id
+- object_id
+- relationship_type
+- strength
+- direction
+- source
+- confidence
+- valid_from
+- valid_to
+
+## 8.5 Project
+
+字段：
+
+- project_id
+- account_id
+- name
+- project_type
+- stage
+- objective
+- budget_status
+- timeline
+- owner
+- stakeholders
+- blockers
+- competitors
+- next_milestone
+- status
+
+## 8.6 Opportunity
+
+字段：
+
+- opportunity_id
+- account_id
+- project_id
+- title
+- opportunity_type
+- stage
+- value_estimate
+- probability
+- urgency
+- evidence
+- blockers
+- risks
+- next_action
+- status
+
+## 8.7 Interaction
+
+字段：
+
+- interaction_id
+- account_id
+- person_ids
+- project_id
+- channel
+- occurred_at
+- summary
+- key_points
+- customer_requests
+- objections
+- commitments
+- next_steps
+- source_ref
+
+## 8.8 Commitment
+
+字段：
+
+- commitment_id
+- account_id
+- project_id
+- person_id
+- commitment_owner
+- content
+- due_at
+- status
+- completed_at
+- evidence_ref
+
+## 8.9 Signal
+
+字段：
+
+- signal_id
+- account_id
+- person_id
+- project_id
+- signal_type
+- source
+- occurred_at
+- content
+- relevance
+- urgency
+- confidence
+- status
+
+## 8.10 Action
+
+字段：
+
+- action_id
+- account_id
+- project_id
+- person_id
+- action_type
+- content
+- reason
+- expected_outcome
+- due_at
+- priority
+- approval_required
+- status
+
+## 8.11 Outcome
+
+字段：
+
+- outcome_id
+- action_id
+- account_id
+- project_id
+- outcome_type
+- result
+- stage_change
+- relationship_change
+- value_change
+- evidence_ref
+- occurred_at
+
+## 8.12 Experience Candidate
+
+字段：
+
+- experience_id
+- source_task_id
+- account_type
+- situation
+- goal
+- constraints
+- action
+- result
+- outcome
+- root_cause
+- lesson
+- applicable_scope
+- counterexamples
+- evidence_refs
+- confidence
+- status
+
+---
+
+# 9. 客户阶段模型
+
+MVP 默认采用简化阶段：
 
 ```text
 发现
-→ 待验证
-→ 可推进
-→ 推进中
-→ 成交 / 失败 / 暂停
+↓
+建立联系
+↓
+形成需求
+↓
+进入项目
+↓
+方案 / 沟通
+↓
+决策推进
+↓
+成交 / 合作
+↓
+持续经营
 ```
 
-## 9.3 机会判断维度
+每个客户和项目必须允许：
 
-第一版建议包含：
+- 前进
+- 停滞
+- 回退
+- 暂停
+- 结束
 
-- 需求明确度
-- 客户匹配度
-- 关系基础
-- 时间窗口
-- 决策链清晰度
-- 预算信号
-- 推进成本
-- 竞争风险
-- 历史经验
-- 信息完整度
-
-产品输出：
-
-- 当前优先级
-- 判断理由
-- 缺失信息
-- 下一步动作
+阶段变化必须记录原因与证据。
 
 ---
 
-# 10. 对话页
+# 10. Marketing Agent
 
-对话是营销 Agent 的统一自然语言入口。
+## 10.1 单 Agent 原则
 
-用户可以直接问：
+MVP 只设一个：
 
-- 今天最应该跟谁？
-- 王总这个客户现在什么状态？
-- 下周见某局领导，我需要准备什么？
-- 这个客户为什么一直没有推进？
-- 最近哪些政策和我的客户有关？
-- 我们以前做过类似项目吗？
-- 这次方案应该从哪个角度切？
-- 帮我复盘这个失败项目。
+> **Marketing Agent**
 
-所有回答优先使用已有客户上下文和企业经验。
+暂不拆分研究 Agent、销售 Agent、复盘 Agent、学习 Agent。
 
-事实与推断必须区分。
+Marketing Agent 通过不同 SKILL 完成任务。
 
----
+## 10.2 核心职责
 
-# 11. Marketing Agent
+Marketing Agent 负责：
 
-MVP 只设置一个核心 Marketing Agent。
+1. 理解用户营销目标
+2. 获取当前客户上下文
+3. 判断所需 SKILL
+4. 组织业务任务
+5. 输出营销判断
+6. 给出可执行动作
+7. 引用证据
+8. 要求必要人工确认
+9. 记录任务结果
+10. 触发复盘与 Experience Candidate
 
-第一阶段禁止拆成多个业务 Agent。
+## 10.3 禁止事项
 
-## 11.1 Agent 目标
+Marketing Agent 不得：
 
-核心目标：
-
-> **提高关键客户持续经营质量与客户阶段推进率。**
-
-## 11.2 Agent 主要职责
-
-- 理解客户上下文
-- 识别信息缺口
-- 主动研究
-- 判断客户状态
-- 判断机会
-- 生成下一步动作
-- 准备会议
-- 辅助跟进
-- 记录结果
-- 发起复盘
-- 形成经验候选
-
-## 11.3 Agent 禁止事项
-
-默认禁止：
-
-- 未审批自动对外发送正式信息
-- 未审批做报价承诺
-- 未审批做合同承诺
-- 未审批代表用户发表官方意见
-- 将推断写成事实
-- 无证据修改关键客户事实
-- 自动删除关键历史记录
-- 自动激活未经验证的营销规则
+- 未经确认对外发送高风险内容
+- 未经确认做价格承诺
+- 未经确认做合同承诺
+- 未经确认提交政府正式文件
+- 把推测写成事实
+- 删除关键历史证据
+- 自动发布进化后的 Skill
 
 ---
 
-# 12. Marketing Domain
+# 11. Marketing SKILL 体系
 
-Marketing Domain 完全属于本产品。
-
-建议第一版定义以下业务对象：
+MVP 首批只做 6 个 SKILL。
 
 ```text
-Person
-Organization
-Department
-Role
-Relationship
-Customer
-Project
-Opportunity
-Need
-Interaction
-Commitment
-Signal
-Action
-Outcome
+Marketing Agent
+│
+├─ S1 客户研究
+├─ S2 关系分析
+├─ S3 机会判断
+├─ S4 会前准备
+├─ S5 跟进建议
+└─ S6 任务复盘
 ```
 
-## 12.1 核心关系
+---
+
+# 12. S1 客户研究 SKILL
+
+## 输入
 
 ```text
-Organization
-  ├─ Department
-  │    └─ Person
-  │         └─ Role
-  │
-  ├─ Project
-  │    └─ Opportunity
-  │
-  └─ Relationship
+account_id
+research_goal
+known_context
+allowed_sources
+freshness_requirement
 ```
 
-每次 Interaction 可以影响：
+## 输出
 
-- Relationship
-- Opportunity
-- Need
-- Commitment
+```text
+account_summary
+key_people
+organization_changes
+business_changes
+policy_or_market_signals
+potential_projects
+risks
+unknowns
+evidence_refs
+```
+
+## 成功标准
+
+- 新信息有来源
+- 已知信息不重复堆砌
+- 明确区分事实 / 判断 / 待验证
+- 研究结果能影响后续行动
+
+---
+
+# 13. S2 关系分析 SKILL
+
+## 输入
+
+```text
+account_id
+project_id(optional)
+relationship_graph
+interaction_history
+```
+
+## 输出
+
+```text
+key_decision_makers
+influencers
+supporters
+blockers
+missing_relationships
+relationship_risks
+recommended_connection_path
+evidence_refs
+```
+
+## 成功标准
+
+- 决策链更清楚
+- 能指出关系缺口
+- 能形成具体连接动作
+
+---
+
+# 14. S3 机会判断 SKILL
+
+## 输入
+
+```text
+account_id
+project_id
+signals
+customer_state
+interaction_history
+```
+
+## 输出
+
+```text
+opportunity_level
+opportunity_reason
+urgency
+probability
+blockers
+risks
+why_now
+recommended_strategy
+next_actions
+evidence_refs
+```
+
+## 成功标准
+
+判断最终必须转化成：
+
+> 下一步是否值得投入，以及应该投入什么动作。
+
+---
+
+# 15. S4 会前准备 SKILL
+
+## 输入
+
+```text
+account_id
+meeting_time
+participants
+meeting_goal
+project_id(optional)
+```
+
+## 输出
+
+```text
+one_page_brief
+participant_profiles
+recent_changes
+open_commitments
+key_questions
+recommended_topics
+avoid_topics
+meeting_objective
+ideal_next_step
+evidence_refs
+```
+
+## 设计目标
+
+会前 3 分钟可读完。
+
+---
+
+# 16. S5 跟进建议 SKILL
+
+## 输入
+
+```text
+account_id
+project_id
+latest_interaction
+current_state
+commitments
+signals
+```
+
+## 输出
+
+最多 3 条：
+
+```text
+action
+person
+channel
+reason
+why_now
+expected_outcome
+risk
+due_at
+evidence_refs
+```
+
+## 成功标准
+
+避免输出泛化建议，例如：
+
+- 保持联系
+- 加强沟通
+- 持续关注
+
+必须给出具体动作。
+
+---
+
+# 17. S6 任务复盘 SKILL
+
+## 输入
+
+```text
+task_id
+original_goal
+original_judgment
+actions
+tool_evidence
+user_feedback
+outcome
+```
+
+## 输出
+
+```text
+facts
+expected_vs_actual
+success_factors
+failure_factors
+root_cause
+correction
+lesson
+applicable_scope
+counterexamples
+experience_candidate
+```
+
+## 规则
+
+任务复盘只产生 Candidate。
+
+V1 不允许自动成为：
+
+- Rule
+- Checklist
+- Skill
+- Prompt
+- Policy
+
+必须经过后续验证与人工确认。
+
+---
+
+# 18. 每日自主学习
+
+## 18.1 目标
+
+每日学习不是泛读新闻。
+
+只学习可能影响：
+
+- 关键客户
+- 关键人员
+- 重点项目
+- 当前机会
+- 客户所在行业
+- 政策与采购窗口
+
+的信息。
+
+## 18.2 每日循环
+
+```text
+重点客户清单
+↓
+需要监测的 Signal
+↓
+获取公开信息
+↓
+去重 / 可信度判断
+↓
+客户关联
+↓
+影响判断
+↓
+生成更新
+↓
+必要时生成下一步行动
+```
+
+## 18.3 学习结果
+
+每天输出：
+
+1. 新变化
+2. 涉及客户
+3. 为什么重要
+4. 是否影响当前判断
+5. 是否需要动作
+6. 原始依据
+
+---
+
+# 19. 自主进化产品机制
+
+## 19.1 V1 定义
+
+自主进化在 V1 只意味着：
+
+> 从真实营销任务和结果中持续产生可验证的 Experience Candidate。
+
+不意味着系统可以自行改写核心逻辑。
+
+## 19.2 Candidate 来源
+
+来源包括：
+
+- 成功项目
+- 失败项目
+- 客户回复
+- 用户否决
+- 用户修改
+- 阶段推进
+- 阶段回退
+- 成交
+- 丢单
+- 长期无反馈
+
+## 19.3 Candidate 内容
+
+必须包含：
+
+- Situation
+- Goal
+- Constraints
 - Action
+- Evidence
 - Outcome
+- Root Cause
+- Lesson
+- Applicable Scope
+- Counterexample
+
+## 19.4 进化状态
+
+```text
+Draft
+↓
+Candidate
+↓
+Evaluated
+↓
+Review Required
+↓
+Approved / Rejected
+```
+
+V1 到此结束。
+
+不自动进入 Active Skill。
 
 ---
 
-# 13. SKILL 体系
+# 20. Marketing Eval
 
-SKILL 是产品中的可复用业务能力。
+## 20.1 北极星指标
 
-MVP 只建立最必要的 SKILL。
+> **客户阶段推进率**
 
-## P0 SKILL
+## 20.2 一级指标
 
-### 13.1 客户研究
+| 指标 | 方向 |
+|---|---:|
+| 关键客户历史覆盖率 | ↑ |
+| 会前准备耗时 | ↓ |
+| 承诺遗漏率 | ↓ |
+| 超期未跟进率 | ↓ |
+| Next Action 采纳率 | ↑ |
+| 有效互动率 | ↑ |
+| 项目阶段推进率 | ↑ |
 
-输入：
+## 20.3 判断质量指标
 
-- 客户 / 机构 / 人员
-- 当前目标
+- Evidence Coverage
+- Fact Error Rate
+- Action Specificity
+- Action Adoption
+- User Override Rate
+- Outcome Lift
 
-输出：
+## 20.4 自主进化指标
 
-- 已知事实
-- 最新变化
-- 决策链信息
-- 重要信号
-- 信息缺口
-- 来源
+V1 不用 Candidate 数量作为成功指标。
 
-### 13.2 客户上下文整理
+重点看：
 
-输出：
+- Candidate 被用户认可比例
+- 相似场景复现成功率
+- Candidate 对后续任务是否产生增益
+- 错误经验进入候选的比例
 
-- 当前客户摘要
-- 关键时间线
-- 最近变化
-- 承诺
-- 风险
-- 未决事项
+---
 
-### 13.3 机会判断
+# 21. 人工确认 Gate
 
-输出：
+以下动作默认必须人工确认：
 
-- 当前机会级别
-- 判断依据
-- 信息缺口
-- 主要风险
-- 下一步验证动作
+1. 对外发送正式消息
+2. 报价
+3. 商务承诺
+4. 合同相关表达
+5. 涉及政府正式材料
+6. 涉及敏感客户数据的外发
+7. 修改关键客户事实
+8. 发布新的营销 Rule / Skill
 
-### 13.4 会前准备
+低风险动作可自动执行：
 
-输出：
+- 公开信息学习
+- 内部信息整理
+- 客户摘要
+- 会前准备
+- 提醒
+- 建议生成
+- 待办生成
 
-- 这次见谁
-- 上次谈了什么
-- 已有承诺
-- 对方近期变化
-- 本次目标
-- 建议议题
-- 不应触碰事项
-- 会后应获得的信息
+---
 
-### 13.5 跟进建议
+# 22. 产品层接口契约
 
-输出：
+PRD 只定义产品需要的平台能力。
 
-- 应不应该跟
-- 什么时候跟
-- 找谁
-- 谈什么
-- 为什么
-- 需要准备什么
+## 22.1 AgentRuntimePort
 
-### 13.6 营销复盘
+需求：
 
-输入：
+```text
+run_task(goal, context, allowed_skills, policy)
+```
 
-- 任务过程
-- 行动
+产品关心：
+
+- 任务是否完成
+- 使用了哪些业务能力
+- 输出
 - 证据
-- 客户反馈
-- 结果
+- 状态
 
-输出：
+产品不关心底层如何调度。
 
-- 发生了什么
-- 哪里判断正确
-- 哪里判断错误
-- 成功 / 失败原因
-- 可复用经验候选
-- 适用条件
-- 反例
+## 22.2 MemoryPort
 
----
-
-# 14. 自主学习
-
-自主学习是产品能力，不做成独立资讯产品。
-
-## 14.1 每日学习目标
-
-每天主动学习与已有客户、行业、项目有关的新信息。
-
-第一阶段来源包括：
-
-- 政府公开信息
-- 政策
-- 招投标
-- 企业官网
-- 新闻
-- 行业信息
-- 用户授权的数据源
-
-## 14.2 每日学习流程
+需求：
 
 ```text
-已有客户 / 项目 / 关注主题
-↓
-生成每日学习任务
-↓
-搜索与采集
-↓
-交叉验证
-↓
-识别新 Signal
-↓
-判断与哪些客户相关
-↓
-生成客户变化 / 机会 / 风险
-↓
-进入今日页面
+query_customer_context(scope, query)
+write_business_record(record, evidence)
 ```
 
-## 14.3 学习原则
+产品关心：
 
-- 没有来源，不形成事实
-- 公开信息与内部信息分开
-- 同一信息尽量交叉验证
-- 新信息不能静默覆盖旧判断
-- 与现有客户无关的信息默认不推送
-- 低价值变化不过度打扰用户
+- 获取有效客户上下文
+- 写入经过业务规则允许的数据
+- 来源可追溯
 
----
+产品不定义通用记忆内部结构。
 
-# 15. 自主进化
+## 22.3 ToolPort
 
-自主进化的目标：
-
-> **让产品从一次次真实营销任务中积累更有效的方法。**
-
-第一阶段禁止“自动修改自己并直接上线”。
-
-## 15.1 进化闭环
+需求：
 
 ```text
-Task
-↓
-Action
-↓
-Customer Feedback
-↓
-Outcome
-↓
-Retrospective
-↓
-Experience Candidate
-↓
-Evaluation
-↓
-Human Review
-↓
-Reusable Skill / Rule Candidate
+search(source, query)
+execute(tool, input)
 ```
 
-## 15.2 经验候选必须包含
+产品只声明业务动作和权限。
 
-- 情境
-- 客户类型
-- 目标
-- 约束
-- 采取动作
-- 客户反馈
-- 最终结果
-- 成功 / 失败原因
-- 适用条件
-- 不适用条件
-- 反例
-- 证据
+## 22.4 SkillPort
 
-## 15.3 第一阶段进化边界
-
-MVP 允许：
-
-- 自动发现重复模式
-- 自动生成 Experience Candidate
-- 自动提出策略改进建议
-- 自动生成 SKILL / Rule Candidate
-- 自动评测候选
-
-MVP 禁止：
-
-- 未经审核自动发布新的关键业务规则
-- 自动改变高风险营销策略
-- 自动修改用户确认过的事实
-- 仅凭一次成功案例形成稳定规则
-
----
-
-# 16. Eval
-
-产品 Eval 必须围绕业务结果建立。
-
-## 16.1 用户侧指标
-
-### 北极星指标
-
-# 客户阶段推进率
-
-定义：
-
-> 在给定周期内，接受产品建议并完成行动后，客户 / 项目向下一有效阶段推进的比例。
-
-## 16.2 核心过程指标
-
-- 关键客户历史覆盖率
-- 关键承诺遗漏率
-- 超期未跟进客户数
-- 会前准备时间
-- 下一步动作采纳率
-- 用户修改建议比例
-- 信息错误率
-- 新 Signal 有效命中率
-- 机会发现后实际推进率
-- Experience Candidate 复用成功率
-
-## 16.3 结果反馈
-
-每次建议都必须最终进入以下至少一种状态：
+需求：
 
 ```text
-未采用
-采用未执行
-已执行无反馈
-已执行有反馈
-推进
-失败
-成交
+invoke(skill_id, input)
+evaluate(skill_id, test_case)
 ```
 
-没有 Outcome 的任务不能进入高置信经验。
+产品定义 Marketing SKILL 契约。
 
----
+## 22.5 ApprovalPort
 
-# 17. Human Gate
-
-以下动作默认要求人工确认：
-
-- 正式对外发送消息
-- 邮件发送
-- 报价
-- 正式方案提交
-- 合同与法律承诺
-- 政府正式材料提交
-- 对外公开信息
-- 重要客户事实修改
-- 高风险关系判断
-- 关键业务规则发布
-
-原则：
-
-> **AI 可以准备、建议、模拟、检查；责任动作由人确认。**
-
----
-
-# 18. MVP V1.0
-
-第一版只验证：
-
-> **系统能否比人工更持续地经营一组真实关键客户。**
-
-建议首批使用 20 个真实关键客户验证。
-
-## 18.1 V1 必须完成
-
-### A. 喂资料
-
-支持导入：
-
-- 文档
-- 会议纪要
-- 客户资料
-- 历史方案
-- 历史沟通摘要
-
-### B. 建立客户
-
-支持：
-
-- 客户
-- 人
-- 组织
-- 部门
-- 项目
-- 关系
-- 承诺
-- 机会
-
-### C. 客户作战页
-
-完成六块：
-
-- 已知信息
-- 最近变化
-- 当前判断
-- 下一步
-- 证据
-- 结果
-
-### D. 今日页面
-
-每天给出：
-
-- 最重要客户
-- 最重要变化
-- 最重要行动
-- 主要风险
-
-### E. 对话
-
-围绕已有客户上下文问答和执行任务。
-
-### F. 主动研究
-
-支持对指定客户 / 项目主动研究。
-
-### G. 每日学习
-
-每天自动发现与已有客户相关的新变化。
-
-### H. 复盘
-
-完成任务后自动生成复盘。
-
-### I. Experience Candidate
-
-第一版自主进化做到 Candidate 阶段。
-
-默认不自动发布为正式规则。
-
----
-
-# 19. V1 明确不做
-
-第一版禁止范围膨胀。
-
-不做：
-
-- 完整 CRM 替代
-- 营销自动化平台
-- 广告投放
-- 内容营销平台
-- 社媒运营平台
-- 群发系统
-- 呼叫中心
-- 财务系统
-- 合同系统
-- 客服系统
-- 多 Agent 组织
-- 完整销售管理后台
-- 通用知识库产品
-- 通用企业搜索产品
-- 通用 Memory 产品
-
-外部系统通过接口接入，不在本产品重复建设。
-
----
-
-# 20. 产品层接口预留
-
-本 PRD 不定义 Agent OS 以下的内部架构。
-
-产品层只预留以下能力接口。
-
-## 20.1 Agent Runtime Interface
-
-产品需要：
-
-- 创建营销任务
-- 执行任务
-- 获取运行状态
-- 获取中间证据
-- 取消任务
-- 获取结果
-- 请求人工审批
-
-产品只定义业务输入输出，不约束底层运行实现。
-
-## 20.2 Memory Interface
-
-产品需要：
-
-- 写入客户相关事实
-- 查询客户上下文
-- 查询历史交互
-- 查询经验
-- 写入 Outcome
-- 提交 Experience Candidate
-- 获取事实来源与时间
-
-产品业务对象与底层记忆对象通过 Adapter 映射。
-
-禁止将 Marketing Domain 直接写入底层核心模型。
-
-## 20.3 Tool / MCP Interface
-
-产品需要统一调用：
-
-- Web Search
-- Browser
-- Email
-- Calendar
-- CRM
-- 企业信息
-- 招投标
-- 政策
-- 文件
-- 未来其他授权工具
-
-业务层只声明需要什么能力，不管理工具连接实现。
-
-## 20.4 Skill Interface
-
-产品需要：
-
-- Discover Skill
-- Invoke Skill
-- 获取 Skill Version
-- 获取 Eval 结果
-- 提交 Skill Candidate
-
-Marketing Skill 保持产品域归属。
-
-## 20.5 Approval Interface
-
-统一支持：
+需求：
 
 ```text
-request_approval
-approve
-reject
-revise
+request_approval(action, reason, payload)
 ```
 
-用于所有高风险业务动作。
+必须返回：
 
-## 20.6 Event Interface
+- approved
+- rejected
+- approver
+- timestamp
+- modified_payload(optional)
 
-产品至少预留以下业务事件：
+## 22.6 EventPort
+
+产品需要订阅：
 
 ```text
-customer.created
+customer.updated
 interaction.created
-signal.detected
 commitment.due
-opportunity.updated
-action.recommended
-action.executed
+signal.detected
+project.stage_changed
+action.completed
 outcome.recorded
-experience.candidate_created
 ```
 
-后续自动化均优先基于事件扩展。
+## 22.7 EvalPort
+
+需求：
+
+```text
+evaluate(candidate, baseline, criteria)
+```
+
+营销产品负责给出业务评价标准。
 
 ---
 
-# 21. 产品边界
+# 23. MVP 主流程
 
-必须长期遵守：
+## 流程 A：导入客户
 
-## 产品层拥有
+```text
+新增客户
+↓
+导入资料
+↓
+识别人员 / 项目 / 历史互动
+↓
+用户确认关键事实
+↓
+生成客户作战页
+```
 
-- Marketing Domain
-- Marketing Agent
-- Marketing SKILL
-- Marketing Eval
-- 产品交互
-- 业务状态
-- 营销判断逻辑
-- 营销成功标准
+## 流程 B：每日经营
 
-## 产品层不拥有
+```text
+打开今日
+↓
+查看新变化
+↓
+查看最重要动作
+↓
+进入客户作战页
+↓
+查看依据
+↓
+执行 / 修改 / 忽略
+↓
+记录结果
+```
 
-- Agent Runtime 内核
-- 通用 Memory 内核
-- 通用 MCP / Tool 管理
-- 通用自主执行内核
-- 通用权限体系
-- 通用 Skill Runtime
+## 流程 C：会前准备
 
-原则：
+```text
+选择会议
+↓
+生成 1 页 Brief
+↓
+查看最近变化 / 历史承诺 / 人物关系
+↓
+给出会议目标和问题
+↓
+会后导入结果
+```
 
-> **业务能力可以快速生长，平台能力只复用，不复制。**
+## 流程 D：任务复盘
 
----
-
-# 22. 最小验证实验
-
-首批选择 20 个真实关键客户。
-
-连续运行一个完整经营周期。
-
-对比使用前后：
-
-1. 客户信息恢复速度
-2. 漏跟进数量
-3. 承诺遗漏数量
-4. 会前准备时间
-5. 新机会发现数量
-6. 建议动作采纳率
-7. 实际推进客户数量
-8. 客户阶段推进率
-
-只有“客户阶段推进率”出现明确改善，才证明产品方向成立。
-
----
-
-# 23. 后续版本方向
-
-## V1.1
-
-- 更完整的客户关系图
-- 承诺与提醒
-- 多数据源接入
-- 客户变化订阅
-- 机会评分优化
-
-## V1.5
-
-- Experience 聚类
-- 类似案例推荐
-- 策略候选
-- SKILL Candidate
-- Replay / Eval
-
-## V2.0
-
-- 有治理的 Skill 晋级
-- 企业营销经验库
-- 团队协同
-- 权限与组织能力增强
-- 行业 Marketing Pack
-
-后续可分别构建：
-
-- 政企客户经营 Pack
-- 高净值客户经营 Pack
-- 战略客户经营 Pack
-- 外贸客户经营 Pack
-
-不同 Pack 共用产品框架，Domain、SKILL、Eval 独立演进。
+```text
+任务结束
+↓
+记录 Outcome
+↓
+比较预期与实际
+↓
+识别原因
+↓
+产生 Experience Candidate
+↓
+进入进化中心待审
+```
 
 ---
 
-# 24. 最终产品判断标准
+# 24. MVP 优先级
 
-自主进化营销助理是否成功，只看三件事：
+## P0 必须完成
 
-### 1. 它有没有持续记住客户
+- 客户列表
+- 客户作战页
+- 客户 / 人员 / 项目 / Interaction / Commitment
+- 时间线
+- 客户研究
+- 会前准备
+- 跟进建议
+- 今日行动
+- 证据引用
+- Outcome 记录
+- 任务复盘
+- Experience Candidate
 
-历史不能因人员、时间和任务切换而断裂。
+## P1 MVP 后半段
 
-### 2. 它有没有让客户持续向前推进
+- 关系图
+- Signal 自动监测
+- 机会判断
+- 每日学习
+- 风险提醒
+- 进化中心
 
-每次建议必须服务于具体业务动作。
+## P2 后续
 
-### 3. 它有没有从真实结果中形成新的可复用能力
+- 自动化外部执行
+- 多渠道协同
+- 团队版
+- 多 Agent
+- 高净值 Relationship Pack
+- 行业专用 Pack
+- 自动 Skill 晋级
 
-越用越懂企业自己的客户、业务和方法。
+---
 
-如果三者同时成立，产品形成三个长期资产：
+# 25. V1 验收标准
+
+产品进入下一阶段前，必须完成真实客户验证。
+
+最低验收：
+
+1. 连续导入并经营 20 个真实关键客户
+2. 每个客户形成可用时间线
+3. 关键事实可追溯原始依据
+4. 系统每天能产生有效下一步动作
+5. 用户可接受 / 修改 / 拒绝建议
+6. 可记录实际 Outcome
+7. 可产生结构化 Experience Candidate
+8. Candidate 不自动生效
+9. 至少完成一轮“建议 → 执行 → Outcome → 复盘”完整闭环
+10. 能计算客户阶段推进率
+
+---
+
+# 26. 产品终局
+
+自主进化营销助理最终应形成三类长期资产：
 
 ```text
 客户关系资产
 +
 营销经验资产
 +
-持续生长的 SKILL 资产
+持续生长的业务能力资产
 ```
 
-这三个资产共同构成自主进化营销助理的长期产品壁垒。
+产品越长期使用，应表现出三个结果：
+
+1. 越来越了解客户
+2. 越来越懂用户自己的营销方法
+3. 越来越少重复犯已经发生过的错误
+
+V1 的任务只有一个：
+
+> **先证明这套闭环能持续推动真实客户往前走。**
