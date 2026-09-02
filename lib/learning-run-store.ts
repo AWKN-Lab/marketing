@@ -36,6 +36,23 @@ function statusValue(value: unknown): LearningRun["status"] {
   return "queued";
 }
 
+export function shouldPollLearningRun(run: LearningRun) {
+  return run.status === "queued" || run.status === "running";
+}
+
+export function mergeLearningRun(previous: LearningRun, next: LearningRun): LearningRun {
+  if (previous.runId !== next.runId) return next;
+  return {
+    ...previous,
+    ...next,
+    signals: next.signals.length ? next.signals : previous.signals,
+    traceId: next.traceId ?? previous.traceId,
+    startedAt: previous.startedAt || next.startedAt,
+    finishedAt: next.finishedAt ?? previous.finishedAt,
+    error: next.error,
+  };
+}
+
 export function normalizeLearningRun(input: {
   data: unknown;
   workspaceId: string;

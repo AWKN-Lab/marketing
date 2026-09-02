@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { retryLearningRun } from "@/lib/learning-run-client";
 import { callMarketingProduct } from "@/lib/product-client";
 import { createLearningWatch, LEARNING_WATCHES_KEY, learningSourceTypes, type LearningWatch } from "@/lib/learning-store";
-import { LEARNING_RUNS_KEY, normalizeLearningRun, type LearningRun } from "@/lib/learning-run-store";
+import { LEARNING_RUNS_KEY, normalizeLearningRun, shouldPollLearningRun, type LearningRun } from "@/lib/learning-run-store";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
 export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId: string; workspaceName: string }) {
@@ -11,6 +12,7 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
   const [runs, setRuns] = usePersistedState<LearningRun[]>(LEARNING_RUNS_KEY, []);
   const existing = useMemo(() => watches.find((watch) => watch.workspaceId === workspaceId), [watches, workspaceId]);
   const latestRun = useMemo(() => runs.find((run) => run.workspaceId === workspaceId), [runs, workspaceId]);
+  const pendingWorkspaceRun = useMemo(() => runs.find((run) => run.workspaceId === workspaceId && shouldPollLearningRun(run)), [runs, workspaceId]);
   const [topicInput, setTopicInput] = useState("");
   const [draftTopics, setDraftTopics] = useState<string[]>([]);
   const [draftSources, setDraftSources] = useState<string[]>(["政策", "客户公开动态", "行业"]);
@@ -41,8 +43,12 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
     else setMessage(`本地已保存；平台同步失败：${result.error?.message ?? "unknown error"}`);
   }
 
+  function persistRun(run: LearningRun) {
+    setRuns((current) => [run, ...current.filter((item) => item.runId !== run.runId)]);
+  }
+
   async function runOnce() {
-    if (!existing?.enabled || running) return;
+    if (!existing?.enabled || running || pendingWorkspaceRun) return;
     setRunning(true);
     setMessage("已提交一次真实学习运行…");
     const startedAt = new Date().toISOString();
@@ -62,8 +68,29 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
       setRunning(false);
       return;
     }
-    setRuns([run, ...runs.filter((item) => item.runId !== run.runId)]);
-    setMessage(run.signals.length ? `学习完成：发现 ${run.signals.length} 条真实 Signal。` : `学习运行状态：${run.status}。当前没有可展示 Signal。`);
+    persistRun(run);
+    setMessage(run.signals.length ? `学习完成：发现 ${run.signals.length} 条真实 Signal。` : `学习运行状态：${run.status}。全局 Poller 会继续跟进未完成运行。`);
+    setRunning(false);
+  }
+
+  async function retryFailedRun() {
+    if (!existing?.enabled || !latestRun || latestRun.status !== "failed" || running || pendingWorkspaceRun) return;
+    setRunning(true);
+    setMessage(`正在重试学习运行 ${latestRun.runId}…`);
+    const result = await retryLearningRun({ workspaceId, watchId: existing.id, runId: latestRun.runId, topics: existing.topics, sourceTypes: existing.sourceTypes });
+    if (!result.ok) {
+      setMessage(`重试失败：${result.error?.message ?? "unknown error"}`);
+      setRunning(false);
+      return;
+    }
+    const run = normalizeLearningRun({ data: result.data, workspaceId, watchId: existing.id, traceId: result.trace_id, startedAt: new Date().toISOString() });
+    if (!run) {
+      setMessage("重试接口缺少有效 run_id，未覆盖原失败记录。");
+      setRunning(false);
+      return;
+    }
+    persistRun(run);
+    setMessage(`重试已提交：${run.status}。全局 Poller 会继续跟进。`);
     setRunning(false);
   }
 
@@ -73,8 +100,8 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
     <div className="topic-input"><input value={topicInput} onChange={(event) => setTopicInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addTopic(); } }} placeholder="例如：Q4 文旅促消费政策 / 关键合作方 / 竞争项目"/><button className="button secondary" onClick={addTopic}>加入关注</button></div>
     <div className="row wrap gap-sm">{draftTopics.length ? draftTopics.map((topic) => <button className="watch-chip" key={topic} onClick={() => setDraftTopics(draftTopics.filter((item) => item !== topic))}>{topic} ×</button>) : <span className="muted small">至少加入一个真正影响当前判断的关注项。</span>}</div>
     <div><span className="label">信息范围</span><div className="row wrap gap-sm">{learningSourceTypes.map((source) => <button key={source} className={`chip ${draftSources.includes(source) ? "selected" : ""}`} onClick={() => toggleSource(source)}>{source}</button>)}</div></div>
-    <div className="learning-contract"><span className="pulse"/><div><strong>{latestRun ? `最近运行：${latestRun.status}` : existing?.enabled ? "Watch Scope 已准备" : "等待启用"}</strong><p>{latestRun ? `${latestRun.signals.length} 条真实 Signal${latestRun.traceId ? ` · Trace ${latestRun.traceId}` : ""}` : existing?.enabled ? "可以立即执行一次学习；定时执行仍由 AWKN 平台负责。" : "启用后只保存当前关注范围，不伪造学习结果。"}</p></div></div>
+    <div className="learning-contract"><span className="pulse"/><div><strong>{pendingWorkspaceRun ? `运行中：${pendingWorkspaceRun.status}` : latestRun ? `最近运行：${latestRun.status}` : existing?.enabled ? "Watch Scope 已准备" : "等待启用"}</strong><p>{pendingWorkspaceRun ? `${pendingWorkspaceRun.runId} · 全局自动刷新中${pendingWorkspaceRun.traceId ? ` · Trace ${pendingWorkspaceRun.traceId}` : ""}` : latestRun ? `${latestRun.signals.length} 条真实 Signal${latestRun.traceId ? ` · Trace ${latestRun.traceId}` : ""}` : existing?.enabled ? "可以立即执行一次学习；定时调度仍由 AWKN 平台负责。" : "启用后只保存当前关注范围，不伪造学习结果。"}</p></div></div>
     {message && <p className="muted small">{message}</p>}
-    <div className="row gap-sm wrap"><button className="button primary" disabled={!draftTopics.length || !draftSources.length} onClick={() => void save(true)}>{existing?.enabled ? "更新关注范围" : "启用每日学习"}</button>{existing?.enabled && <button className="button secondary" disabled={running} onClick={() => void runOnce()}>{running ? "运行中…" : "立即学习一次"}</button>}{existing?.enabled && <button className="button ghost" onClick={() => void save(false)}>暂停</button>}</div>
+    <div className="row gap-sm wrap"><button className="button primary" disabled={!draftTopics.length || !draftSources.length} onClick={() => void save(true)}>{existing?.enabled ? "更新关注范围" : "启用每日学习"}</button>{existing?.enabled && latestRun?.status === "failed" && !pendingWorkspaceRun && <button className="button secondary" disabled={running} onClick={() => void retryFailedRun()}>{running ? "重试中…" : "重试失败运行"}</button>}{existing?.enabled && latestRun?.status !== "failed" && <button className="button secondary" disabled={running || Boolean(pendingWorkspaceRun)} onClick={() => void runOnce()}>{running ? "提交中…" : pendingWorkspaceRun ? "学习运行中" : "立即学习一次"}</button>}{existing?.enabled && <button className="button ghost" onClick={() => void save(false)}>暂停</button>}</div>
   </section>;
 }

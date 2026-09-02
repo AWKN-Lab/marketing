@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LearningRunPoller } from "@/components/learning-run-poller";
 import { PlatformStatusPill } from "@/components/platform-status";
 
 const nav = [
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
     <div className="app-shell">
+      <LearningRunPoller />
       <aside className="sidebar">
         <Link href="/today" className="brand"><span className="brand-mark">A</span><div><strong>AWKN</strong><small>MARKETING</small></div></Link>
         <nav>{nav.map((item) => <Link key={item.href} href={item.href} className={`nav-item ${pathname.startsWith(item.href) ? "active" : ""}`}><span>{item.mark}</span>{item.label}</Link>)}</nav>

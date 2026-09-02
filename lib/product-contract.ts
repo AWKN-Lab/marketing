@@ -16,6 +16,8 @@ export const PRODUCT_OPERATIONS = [
   "evolution.review",
   "learning.watch.upsert",
   "learning.run",
+  "learning.run.get",
+  "learning.run.retry",
 ] as const;
 
 export type ProductOperation = (typeof PRODUCT_OPERATIONS)[number];
