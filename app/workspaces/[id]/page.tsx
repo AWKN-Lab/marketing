@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getWorkspace } from "@/lib/mock-data";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
+import { LearningWatchPanel } from "@/components/learning-watch";
 import { LocalWorkspacePage } from "@/components/local-workspace-page";
 import { MaterialFeed } from "@/components/material-feed";
 import { NewTaskButton } from "@/components/new-task-button";
@@ -16,10 +17,8 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
   return <main className="page stack-lg">
     <header className="page-header"><div><p className="eyebrow">WORKSPACE / {workspace.type}</p><h1>{workspace.name}</h1><p className="muted">{workspace.goal}</p></div><div className="row gap-sm"><NewTaskButton workspaceId={workspace.id} workspaceName={workspace.name}/><Link className="button secondary" href={`/tasks/${workspace.activeTaskId}`}>继续当前任务</Link></div></header>
     <section className="summary-strip"><div><span className="label">目标</span><strong>{workspace.successCriteria}</strong></div><div><span className="label">状态</span><strong>{workspace.status}</strong></div><div><span className="label">最近更新</span><strong>{workspace.updatedAt}</strong></div></section>
-    <section className="two-col">
-      <div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">CONTEXT</p><h2>当前上下文</h2></div><EvidenceDrawer compact scopeId={workspace.id}/></div>{workspace.context.map((item) => <article className="context-item" key={item.title}><span className="dot"/><div><strong>{item.title}</strong><p>{item.detail}</p></div></article>)}</div>
-      <div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">MATERIALS</p><h2>资料投喂</h2></div></div><MaterialFeed workspaceId={workspace.id} initialMaterials={workspace.materials}/></div>
-    </section>
+    <section className="two-col"><div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">CONTEXT</p><h2>当前上下文</h2></div><EvidenceDrawer compact scopeId={workspace.id}/></div>{workspace.context.map((item) => <article className="context-item" key={item.title}><span className="dot"/><div><strong>{item.title}</strong><p>{item.detail}</p></div></article>)}</div><div className="panel stack-md"><div className="section-title"><div><p className="eyebrow">MATERIALS</p><h2>资料投喂</h2></div></div><MaterialFeed workspaceId={workspace.id} initialMaterials={workspace.materials}/></div></section>
+    <LearningWatchPanel workspaceId={workspace.id} workspaceName={workspace.name}/>
     <WorkspaceTaskList workspaceId={workspace.id} workspaceName={workspace.name} baseTasks={workspace.tasks}/>
   </main>;
 }
