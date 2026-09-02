@@ -65,3 +65,5 @@ export function canMarketingAction(session: MarketingSession, capability: Market
   if (!hasMarketingCapability(session, capability)) return false;
   return workspaceId ? hasWorkspaceAccess(session, workspaceId, required) : true;
 }
+export function canReadWorkspace(session: MarketingSession, workspaceId: string) { return canMarketingAction(session, "workspace.read", workspaceId, "read"); }
+export function filterReadableWorkspaceItems<T>(session: MarketingSession, items: T[], workspaceIdOf: (item: T) => string) { return items.filter((item) => canReadWorkspace(session, workspaceIdOf(item))); }
