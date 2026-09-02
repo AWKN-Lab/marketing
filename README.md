@@ -5,21 +5,22 @@
 ## 当前状态
 
 ### P0 可试跑基线｜DEVELOPMENT_VERIFIED
-
 - 基线：`c64fe96202b7d8b9ac9e88dd12acdcea2bc88dbd`
 - GitHub Actions Run：`33614796833`
 
 ### P1 Material 基线｜DEVELOPMENT_VERIFIED
-
 - 基线：`81947e512aa41f3b4070756a0cd52e2830bc167d`
 - GitHub Actions Run：`33622442041`
 
 ### P2 Reconcile 基线｜DEVELOPMENT_VERIFIED
-
 - 基线：`7fa762439a46b22b46fbb2af112109611bb89448`
 - GitHub Actions Run：`33622898785`
 
-三条基线均通过：
+### P3 Task Execution 基线｜DEVELOPMENT_VERIFIED
+- 基线：`64586eef33a0c72318f367b4268be3e0bac59bef`
+- GitHub Actions Run：`33623356240`
+
+全部基线均通过：
 
 ```text
 npm run typecheck  ✓
@@ -61,8 +62,6 @@ Workspace
 → Agent Context / Evidence Drawer
 ```
 
-P1 的 DEVELOPMENT_VERIFIED 表示营销产品仓库中的 Adapter、状态机、ID 边界、自动验收和 production build 已验证。AWKN 上游上传/解析服务仍需真实环境联调。
-
 ## P2 Platform Reconcile
 
 Workspace / Task 支持产品层状态读回与 revision 冲突检测：
@@ -75,27 +74,46 @@ Workspace / Task 支持产品层状态读回与 revision 冲突检测：
 clean / local-newer / platform-newer / conflict / unbased / stale-platform
 ```
 
-处理原则：
+平台状态不会静默覆盖本地状态。用户可以查看双快照并选择采用 AWKN 版本，或保留本地并携带 `base_revision` 回写。
 
-- 平台读回必须保持相同 `entity_id`；
-- 平台状态不会静默覆盖本地状态；
-- `platform-newer` / `conflict` 提供本地与平台双快照；
-- 用户可选择“采用 AWKN 版本”或“保留本地并回写”；
-- 回写携带 `base_revision` 和幂等键；
-- 平台 revision 低于已知基线时标记 `stale-platform`。
+## P3 Task Execution
 
-P2 当前覆盖 Workspace / Task 产品实体。Artifact 的独立编辑状态仍保存在任务工作台，尚未进入 revision 冲突合并范围。
+Task 内的当前有效执行状态统一成一个产品实体：
 
----
-
-## 本地运行
-
-```bash
-npm install
-npm run dev
+```text
+TaskExecutionState
+├─ User Final
+├─ Feedback
+├─ Outcome
+└─ Outcome Note
 ```
 
-打开 `http://localhost:3000`。
+跨端操作：
+
+```text
+task.execution.get
+task.execution.upsert
+```
+
+执行状态使用稳定 ID：
+
+```text
+task-execution:{taskId}
+```
+
+同步机制：
+
+- 本地编辑即时保存；
+- User Final 编辑采用 700ms debounce；
+- Feedback / Outcome 立即触发快照同步；
+- 同一 Task Execution 同步采用单飞队列；
+- 新编辑发生在请求执行期间时，只保留最新待发送快照；
+- 幂等键包含 stable ID、base revision、snapshot fingerprint；
+- `feedback.record / outcome.record` 继续保留为事件记录；
+- Task Execution 保存当前有效状态快照；
+- Task Execution 同样支持 P2 的 revision / fingerprint 冲突合并。
+
+---
 
 ## 接入 AWKN 产品接口
 
@@ -108,18 +126,7 @@ AWKN_MARKETING_AGENT_URL=http://your-awkn-agent-product-endpoint
 AWKN_MARKETING_AGENT_TOKEN=
 ```
 
-assistant-ui 只调用本仓库 `/api/agent`，Route Handler 再转发 AWKN。
-
-Agent 产品结果支持：
-
-```text
-text
-+ evidence[]
-+ artifact
-+ trace_id
-```
-
-### 通用产品操作
+### 通用产品接口
 
 ```bash
 AWKN_MARKETING_API_URL=http://your-awkn-marketing-product-endpoint
@@ -132,6 +139,7 @@ AWKN_MARKETING_API_TOKEN=
 - `material.feed`
 - `material.parse.get` / `material.parse.retry`
 - `task.create` / `task.update` / `task.get` / `task.run`
+- `task.execution.get` / `task.execution.upsert`
 - `feedback.record`
 - `outcome.record`
 - `evolution.review`
@@ -145,7 +153,7 @@ AWKN_MARKETING_MATERIAL_UPLOAD_TOKEN=
 AWKN_MARKETING_MATERIAL_MAX_MB=100
 ```
 
-浏览器把文件提交给 `/api/material-upload`，该 Adapter 再以 multipart/form-data 转发给 AWKN 产品上传接口。本仓库不实现文件解析器、向量化、Memory 或底层存储。
+浏览器把文件提交给 `/api/material-upload`，Adapter 再转发给 AWKN 产品上传接口。本仓库不实现文件解析、向量化、Memory 或底层存储。
 
 ---
 
@@ -160,8 +168,6 @@ local-only
 sync-error
 ```
 
-Workspace / Task / Material / Feedback / Outcome / Evolution 均遵守稳定业务 ID 与幂等约束。
-
 成功同步后记录：
 
 ```text
@@ -169,27 +175,7 @@ platformRevision
 syncedFingerprint
 ```
 
-它们用于后续 `workspace.get / task.get` 的冲突判断。
-
----
-
-## 自动验收
-
-`npm run test:p0` 当前覆盖：
-
-- Experience / Counterexample 边界
-- Workspace Scoped Experience
-- Product Eval
-- 本地状态与导出包边界
-- Material 文本 / 二进制边界
-- 稳定 Workspace / Task / Material ID
-- 二进制 parse lifecycle
-- Material evidence / parsed text → Agent Context
-- Agent Result evidence / artifact / trace
-- Daily Learning Run / Signal
-- Local-first Sync
-- Workspace / Task entity read identity
-- revision / fingerprint reconcile：clean、local-newer、platform-newer、conflict
+用于后续 Workspace / Task / Task Execution 的冲突判断。
 
 ---
 
@@ -208,8 +194,6 @@ syncedFingerprint
 - 通用长期记忆生命周期
 - 通用文件解析 / 向量化基础设施
 
-完整平台关系：
-
 ```text
 营销助理（产品层）
        ↓
@@ -224,10 +208,10 @@ Memory OS   MCP
 
 ## 下一阶段
 
-1. Artifact / Feedback / Outcome 的 revision-aware 状态合并。
+1. 异步 `learning.run` 的运行状态自动回流与失败重试。
 2. 使用真实 AWKN 上传/解析服务完成 PDF / PPT / DOC / XLS 联调。
-3. 异步 `learning.run` 的完成通知 / 状态刷新。
-4. 多用户、团队权限、认证与租户隔离。
+3. 多用户、团队权限、认证与租户隔离。
+4. Experience Candidate / Evolution Review 的跨端 revision 读回。
 5. 真实平台环境下 5 Workspace / 30 Task 业务验收。
 
 ## 文档
@@ -238,3 +222,4 @@ Memory OS   MCP
 - `docs/P0-BASELINE.md`
 - `docs/P1-MATERIAL-BASELINE.md`
 - `docs/P2-RECONCILE-BASELINE.md`
+- `docs/P3-EXECUTION-BASELINE.md`
