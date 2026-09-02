@@ -20,18 +20,24 @@ export function EvidenceDrawer({ compact = false, scopeId, taskId, includeDemo =
     time: item.time ?? "Agent result",
     origin: "agent",
   }));
-  const materialEvidence: EvidenceItem[] = materials.map((material) => ({
-    type: material.kind,
-    title: material.title,
-    snippet: material.parseMode === "local_text" && material.content
+  const materialEvidence: EvidenceItem[] = materials.flatMap((material) => {
+    if (material.evidence?.length) return material.evidence.map((item) => ({
+      type: item.type,
+      title: `${material.title} · ${item.title}`,
+      snippet: item.snippet,
+      source: item.source,
+      time: item.time ?? material.createdAt || "AWKN parser",
+      origin: "material" as const,
+    }));
+    const snippet = material.parseMode === "local_text" && material.content
       ? material.content.slice(0, 220)
-      : material.parseMode === "platform_required"
-        ? "该二进制资料已进入当前 Workspace，但尚未由 AWKN 解析；当前不生成引用片段。"
-        : "该来源已进入当前 Workspace，等待 AWKN 获取或验证。",
-    source: material.source,
-    time: material.createdAt || "P0 Local",
-    origin: "material",
-  }));
+      : material.parseMode === "platform_parsed"
+        ? material.content?.slice(0, 220) ?? "AWKN 已完成解析；当前结果没有返回可展示的证据片段。"
+        : material.parseMode === "platform_required"
+          ? `${material.status}；解析完成前不生成引用片段。`
+          : "该来源已进入当前 Workspace，等待 AWKN 获取或验证。";
+    return [{ type: material.kind, title: material.title, snippet, source: material.source, time: material.createdAt || "P0 Local", origin: "material" as const }];
+  });
   const demoEvidence: EvidenceItem[] = includeDemo ? evidence.map((item) => ({ ...item, origin: "demo" as const })) : [];
   const items = [...agentEvidence, ...materialEvidence, ...demoEvidence];
 

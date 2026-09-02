@@ -1,13 +1,20 @@
+import type { MaterialEvidence, MaterialParseState } from "@/lib/material-upload";
+
 export type LocalMaterial = {
   id: string;
   title: string;
   kind: string;
   source: string;
   status: string;
-  parseMode: "local_text" | "platform_required" | "reference_only";
+  parseMode: "local_text" | "platform_required" | "platform_parsed" | "reference_only";
   content?: string;
   url?: string;
   createdAt: string;
+  platformStatus?: MaterialParseState;
+  platformTraceId?: string;
+  platformRevision?: number;
+  platformError?: string;
+  evidence?: MaterialEvidence[];
 };
 
 export const MAX_LOCAL_TEXT_CHARS = 200_000;
@@ -35,7 +42,8 @@ export function isLocalTextFile(input: { name: string; type?: string }) {
 export function buildAgentMaterialContext(materials: LocalMaterial[], maxChars = MAX_AGENT_CONTEXT_CHARS) {
   let remaining = maxChars;
   return materials.map((material) => {
-    if (material.parseMode !== "local_text" || !material.content || remaining <= 0) {
+    const canInline = (material.parseMode === "local_text" || material.parseMode === "platform_parsed") && Boolean(material.content) && remaining > 0;
+    if (!canInline || !material.content) {
       return {
         id: material.id,
         title: material.title,
@@ -44,6 +52,7 @@ export function buildAgentMaterialContext(materials: LocalMaterial[], maxChars =
         status: material.status,
         parse_mode: material.parseMode,
         url: material.url,
+        evidence: material.evidence?.slice(0, 5),
       };
     }
     const content = material.content.slice(0, remaining);
@@ -57,6 +66,7 @@ export function buildAgentMaterialContext(materials: LocalMaterial[], maxChars =
       parse_mode: material.parseMode,
       content,
       truncated: content.length < material.content.length,
+      evidence: material.evidence?.slice(0, 5),
     };
   });
 }

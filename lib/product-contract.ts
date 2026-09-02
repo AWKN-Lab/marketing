@@ -2,6 +2,7 @@ export const PRODUCT_OPERATIONS = [
   "workspace.create",
   "workspace.update",
   "material.feed",
+  "material.parse.get",
   "task.create",
   "task.run",
   "feedback.record",
