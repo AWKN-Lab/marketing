@@ -6,15 +6,10 @@ import { MarketingRuntimeProvider } from "@/components/assistant-ui/marketing-ru
 import { MarketingThread } from "@/components/assistant-ui/marketing-thread";
 
 export function TaskConversation({ task }: { task: MarketingTask }) {
-  return (
-    <section className="conversation-panel">
-      <AppliedExperience items={task.appliedExperiences} />
-      <MarketingRuntimeProvider initialMessages={[
-        { role: "user", content: task.userPrompt },
-        { role: "assistant", content: `任务判断：${task.judgment}` },
-      ]}>
-        <MarketingThread />
-      </MarketingRuntimeProvider>
-    </section>
-  );
+  return <section className="conversation-panel">
+    <AppliedExperience items={task.appliedExperiences} />
+    <MarketingRuntimeProvider taskId={task.id} workspaceId={task.workspaceId} initialMessages={[{ role: "user", content: task.userPrompt }, { role: "assistant", content: `任务判断：${task.judgment}` }]}>
+      <MarketingThread />
+    </MarketingRuntimeProvider>
+  </section>;
 }
