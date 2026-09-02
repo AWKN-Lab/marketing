@@ -21,13 +21,12 @@ type UpstreamResponse = {
   text?: string;
   evidence?: unknown[];
   artifact?: unknown;
+  trace_id?: string;
 };
 
 export async function POST(request: Request) {
   const endpoint = process.env.AWKN_MARKETING_AGENT_URL;
-  if (!endpoint) {
-    return Response.json({ error: "platform_not_configured" }, { status: 503 });
-  }
+  if (!endpoint) return Response.json({ error: "platform_not_configured" }, { status: 503 });
 
   let body: AgentRequest;
   try {
@@ -59,14 +58,15 @@ export async function POST(request: Request) {
     });
 
     const payload = (await upstream.json().catch(() => ({}))) as UpstreamResponse & { error?: string };
-    if (!upstream.ok) {
-      return Response.json({ error: payload.error ?? "platform_error" }, { status: upstream.status });
-    }
-    if (typeof payload.text !== "string") {
-      return Response.json({ error: "invalid_platform_response" }, { status: 502 });
-    }
+    if (!upstream.ok) return Response.json({ error: payload.error ?? "platform_error" }, { status: upstream.status });
+    if (typeof payload.text !== "string") return Response.json({ error: "invalid_platform_response" }, { status: 502 });
 
-    return Response.json({ text: payload.text, evidence: payload.evidence ?? [], artifact: payload.artifact ?? null });
+    return Response.json({
+      text: payload.text,
+      evidence: payload.evidence ?? [],
+      artifact: payload.artifact ?? null,
+      trace_id: payload.trace_id,
+    });
   } catch {
     return Response.json({ error: "platform_unreachable" }, { status: 502 });
   }
