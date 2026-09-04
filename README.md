@@ -108,6 +108,8 @@ Memory OS   MCP
 
 并建立第一轮真实业务 Eval 基线。
 
+具体开发顺序、工作包、Owner、Hard Gate 与验收条件见 `docs/DEVELOPMENT-PLAN.md`。
+
 ## 文档
 
 ### 文档入口
@@ -115,6 +117,7 @@ Memory OS   MCP
 - `docs/README.md`
 - `docs/PRD.md`
 - `docs/ENGINEERING.md`
+- `docs/DEVELOPMENT-PLAN.md`
 - `docs/FRONTEND.md`
 
 ### 系统级工程文档
