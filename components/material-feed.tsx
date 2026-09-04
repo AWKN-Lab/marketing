@@ -78,7 +78,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
 
   async function uploadBinary(file: File, materialId: string) {
     const response = await uploadMaterialFile({ workspaceId, materialId, file });
-    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
   }
 
   async function refreshParse(materialId: string, announce = true) {
@@ -87,7 +87,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     if (announce) setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在刷新解析状态…" } : material));
     try {
       const response = await refreshMaterialParse({ workspaceId, materialId });
-      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
     } finally {
       refreshing.current.delete(materialId);
     }
@@ -100,7 +100,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在重新提交解析…", platformStatus: "queued", platformError: undefined } : material));
     try {
       const response = await retryMaterialParse({ workspaceId, materialId, baseRevision });
-      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
     } finally {
       refreshing.current.delete(materialId);
     }
