@@ -44,16 +44,33 @@ function attemptValue(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
+function stateRank(status: LearningRun["status"]) {
+  if (status === "queued") return 0;
+  if (status === "running") return 1;
+  return 2;
+}
+
+function terminal(status: LearningRun["status"]) {
+  return status === "completed" || status === "failed";
+}
+
 export function shouldPollLearningRun(run: LearningRun) {
   return run.status === "queued" || run.status === "running";
 }
 
 export function mergeLearningRun(previous: LearningRun, next: LearningRun): LearningRun {
   if (previous.runId !== next.runId) return next;
+  const previousAttempt = previous.attempt || 1;
+  const nextAttempt = next.attempt || 1;
+  if (nextAttempt < previousAttempt) return previous;
+  if (nextAttempt === previousAttempt) {
+    if (stateRank(next.status) < stateRank(previous.status)) return previous;
+    if (terminal(previous.status) && next.status !== previous.status) return previous;
+  }
   return {
     ...previous,
     ...next,
-    attempt: Math.max(previous.attempt || 1, next.attempt || 1),
+    attempt: nextAttempt,
     signals: next.signals.length ? next.signals : previous.signals,
     traceId: next.traceId ?? previous.traceId,
     startedAt: previous.startedAt || next.startedAt,
