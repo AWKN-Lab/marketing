@@ -26,7 +26,7 @@ function validTimestamp(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 && Number.isFinite(Date.parse(value));
 }
 
-function validAttempt(value: unknown) {
+function validAttempt(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
@@ -135,10 +135,11 @@ function validateRunRequest(input: ProductRequestLike): LearningContractViolatio
   if (!validStringList(payload.topics) || !validStringList(payload.source_types)) {
     return { code: "VALIDATION_ERROR", message: "learning.run.retry 的 topics / source_types 必须是非空字符串数组。" };
   }
-  if (!validAttempt(payload.attempt) || payload.attempt < 2) {
+  const attempt = payload.attempt;
+  if (!validAttempt(attempt) || attempt < 2) {
     return { code: "VALIDATION_ERROR", message: "learning.run.retry 的 attempt 必须是大于等于 2 的整数。" };
   }
-  if (text(input.idempotency_key) !== learningRunRetryIdempotencyKey(runId, payload.attempt)) {
+  if (text(input.idempotency_key) !== learningRunRetryIdempotencyKey(runId, attempt)) {
     return { code: "VALIDATION_ERROR", message: "learning.run.retry 必须使用 run_id + attempt 派生的 idempotency_key。" };
   }
   return null;
@@ -222,10 +223,10 @@ export function validateLearningProductResponse(
     return responseError(response, "VALIDATION_ERROR", `${operation} 缺少有效 attempt。`);
   }
   if (operation === "learning.run" && data.attempt !== 1) {
-    return responseError(response, "VALIDATION_ERROR", "learning.run 初次运行的 attempt 必须为 1。" );
+    return responseError(response, "VALIDATION_ERROR", "learning.run 初次运行的 attempt 必须为 1。");
   }
   if (operation === "learning.run.retry" && data.attempt !== payload.attempt) {
-    return responseError(response, "VALIDATION_ERROR", "learning.run.retry 返回的 attempt 与请求不一致。" );
+    return responseError(response, "VALIDATION_ERROR", "learning.run.retry 返回的 attempt 与请求不一致。");
   }
   if (!isLearningRunStatus(data.status)) {
     return responseError(response, "VALIDATION_ERROR", `${operation} 返回了无效 Learning status。`);
