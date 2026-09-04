@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { readIntegrationConfig, runP6Case } from "./p6-test-support.ts";
 
-const config = readIntegrationConfig();
+async function main() {
+  const config = readIntegrationConfig();
 
-await runP6Case("integration data scope is explicit", () => {
-  assert.ok(["fixture", "synthetic", "real-acceptance"].includes(config.dataKind));
-});
+  await runP6Case("integration data scope is explicit", () => {
+    assert.ok(["fixture", "synthetic", "real-acceptance"].includes(config.dataKind));
+  });
 
-if (!config.enabled) {
-  console.log("[P6][SKIP] real AWKN integration disabled; set AWKN_P6_INTEGRATION=true in a server-side integration environment.");
-} else {
+  if (!config.enabled) {
+    console.log("[P6][SKIP] real AWKN integration disabled; set AWKN_P6_INTEGRATION=true in a server-side integration environment.");
+    return;
+  }
+
   await runP6Case("platform integration fails closed without local session fallback", () => {
     assert.equal(config.allowLocalSession, false);
   }, { operation: "session" });
@@ -26,3 +29,8 @@ if (!config.enabled) {
     }
   });
 }
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
