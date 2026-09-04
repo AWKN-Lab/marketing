@@ -51,7 +51,7 @@ Tenant + Actor
 - localStorage 按 `tenant + actor` 隔离；
 - Workspace/Task 仅在当前 read Grant 范围内展示；
 - 创建、投喂、Agent 执行、Feedback、Outcome、Evolution Review、Learning 分别受 capability + write Grant 控制；
-- 被撤权 Workspace 的 Candidate 不再进入新任务 Experience 匹配；
+- Workspace 撤权后，其 Candidate 退出新任务 Experience 匹配；
 - 浏览器整包数据导出关闭；
 - 浏览器 Session 只用于 UI / cache scope，上游 AWKN 负责最终授权。
 
@@ -91,14 +91,49 @@ Memory OS   MCP
 
 ## 下一阶段
 
+### P6 Real AWKN Integration
+
 1. Experience Candidate / Evolution Review 跨端状态与 revision 契约。
 2. 使用真实 AWKN 服务完成 Session、Material、Agent、Learning 联调。
-3. 真实平台环境下 5 Workspace / 30 Task 业务验收。
+3. 补齐 Contract、Permission、Idempotency、Revision、Retry 验证。
+
+### P7 Real Business Acceptance
+
+真实平台环境执行：
+
+```text
+5 Workspace
+30 Task
+```
+
+并建立第一轮真实业务 Eval 基线。
 
 ## 文档
 
+### 文档入口
+
+- `docs/README.md`
 - `docs/PRD.md`
+- `docs/ENGINEERING.md`
 - `docs/FRONTEND.md`
+
+### 系统级工程文档
+
+- `docs/ARCHITECTURE.md`
+- `docs/DOMAIN-DATA-MODEL.md`
+- `docs/AWKN-INTEGRATION.md`
+- `docs/AGENT-SKILL-ENGINEERING.md`
+- `docs/EVAL-ACCEPTANCE.md`
+- `docs/TESTING.md`
+- `docs/DEPLOYMENT.md`
+
+### 前端组件工程文档
+
+- `docs/frontend/README.md`
+- `docs/frontend/01-app-shell.md` ～ `docs/frontend/10-evolution-review.md`
+
+### 已验证阶段基线
+
 - `docs/P0-BASELINE.md`
 - `docs/P1-MATERIAL-BASELINE.md`
 - `docs/P2-RECONCILE-BASELINE.md`
