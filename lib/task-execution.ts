@@ -23,6 +23,11 @@ type TaskExecutionInput = Omit<TaskExecutionState, "id" | "status" | "attempt"> 
   attempt?: number;
 };
 
+export type TaskExecutionEditableProjection = Pick<
+  TaskExecutionState,
+  "artifactTitle" | "finalText" | "feedback" | "outcome" | "outcomeNote"
+>;
+
 export function isTaskExecutionStatus(value: unknown): value is TaskExecutionStatus {
   return typeof value === "string" && (TASK_EXECUTION_STATUSES as readonly string[]).includes(value);
 }
@@ -38,6 +43,17 @@ export function buildTaskExecutionState(input: TaskExecutionInput): TaskExecutio
     ...rest,
     status: status ?? "succeeded",
     attempt: attempt ?? 1,
+  };
+}
+
+export function mergeTaskExecutionEditableProjection(
+  previous: TaskExecutionState,
+  editable: TaskExecutionEditableProjection,
+): TaskExecutionState {
+  return {
+    ...previous,
+    ...editable,
+    id: taskExecutionId(previous.taskId),
   };
 }
 
