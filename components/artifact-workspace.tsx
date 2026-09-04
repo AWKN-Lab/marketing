@@ -41,7 +41,8 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
   useEffect(() => { if (agentDraft !== previousAgentDraft.current) { if (finalText === previousAgentDraft.current || finalText === initialFinal || finalText === aiDraft) setFinalText(agentDraft); previousAgentDraft.current = agentDraft; } }, [agentDraft, aiDraft, finalText, initialFinal, setFinalText]);
   useEffect(() => () => { if (syncTimer.current !== null) window.clearTimeout(syncTimer.current); }, []);
   const diffSummary = useMemo(() => { const aiLines = agentDraft.split("\n").filter(Boolean); const finalLines = finalText.split("\n").filter(Boolean); return { removed: aiLines.filter((line) => !finalLines.includes(line)), added: finalLines.filter((line) => !aiLines.includes(line)) }; }, [agentDraft, finalText]);
-  const fingerprint = feedback && outcome ? candidateFingerprint({ finalText, feedback, outcome, outcomeNote }) : ""; const existingCandidate = localCandidates.find((candidate) => candidate.taskId === taskId); const candidateCurrent = Boolean(existingCandidate && existingCandidate.fingerprint === fingerprint);
+  const candidateEvidenceRefs = agentResult?.evidenceRefs ?? agentResult?.evidence.map((item) => item.id || item.url || item.source) ?? [];
+  const fingerprint = feedback && outcome ? candidateFingerprint({ finalText, feedback, outcome, outcomeNote, aiDraft: agentDraft, evidenceRefs: candidateEvidenceRefs, runId: agentResult?.runId }) : ""; const existingCandidate = localCandidates.find((candidate) => candidate.taskId === taskId); const candidateCurrent = Boolean(existingCandidate && existingCandidate.fingerprint === fingerprint);
   function executionWith(patch: Partial<TaskExecutionState>) { const next = { ...executionRef.current, ...patch, id: executionEntityId, taskId, workspaceId }; executionRef.current = next; return next; }
   async function flushExecutionSync(snapshot: TaskExecutionState) { if (!canExecutionWrite) return; if (syncInFlight.current) { queuedExecution.current = snapshot; return; } syncInFlight.current = true; try { const baseline = readSyncRecord(executionEntityKey); await syncMarketingProduct({ entityKey: executionEntityKey, operation: "task.execution.upsert", workspaceId, taskId, expectedEntityId: executionEntityId, idempotencyKey: `task.execution.upsert:${executionEntityId}:${baseline?.platformRevision ?? "new"}:${snapshotFingerprint(snapshot)}`, payload: { execution: snapshot, base_revision: baseline?.platformRevision }, snapshot }); } finally { syncInFlight.current = false; const next = queuedExecution.current; queuedExecution.current = null; if (next) void flushExecutionSync(next); } }
   function scheduleExecutionSync(snapshot: TaskExecutionState, delay = 700) { if (!canExecutionWrite) return; if (syncTimer.current !== null) window.clearTimeout(syncTimer.current); syncTimer.current = window.setTimeout(() => void flushExecutionSync(snapshot), delay); }
@@ -94,7 +95,7 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
     const outcomeEvent = buildOutcomeEvent({
       execution: snapshot,
       feedbackEventId: feedbackEvent.id,
-      evidenceRefs: agentResult?.evidenceRefs ?? agentResult?.evidence.map((item) => item.id || item.url || item.source) ?? [],
+      evidenceRefs: candidateEvidenceRefs,
       runId: agentResult?.runId,
       traceId: agentResult?.traceId,
     });
@@ -126,7 +127,26 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
       if (!outcomeResponse.ok && outcomeResponse.error?.code !== "PLATFORM_NOT_CONFIGURED") return;
 
       if (isOutcomeValue(outcome)) {
-        const candidate = createExperienceCandidate({ taskId, workspaceId, taskType, taskGoal, artifactTitle, feedback, outcome, outcomeNote, editCount: diffSummary.removed.length + diffSummary.added.length, fingerprint });
+        const candidate = createExperienceCandidate({
+          taskId,
+          workspaceId,
+          taskType,
+          taskGoal,
+          artifactTitle,
+          aiDraft: agentDraft,
+          finalText,
+          feedback,
+          outcome,
+          outcomeNote,
+          editCount: diffSummary.removed.length + diffSummary.added.length,
+          fingerprint,
+          feedbackEventId: feedbackEvent.id,
+          outcomeEventId: outcomeEvent.id,
+          evidenceRefs: outcomeEvent.evidence_refs,
+          runId: outcomeEvent.run_id,
+          traceId: outcomeEvent.trace_id,
+          previousCandidate: existingCandidate,
+        });
         setLocalCandidates((current) => [candidate, ...current.filter((item) => item.taskId !== taskId)]);
       }
     })();
