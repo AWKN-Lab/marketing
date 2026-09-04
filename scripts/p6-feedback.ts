@@ -138,7 +138,7 @@ async function main() {
     const event = feedbackEvent();
     const seen = new Set<string>();
     let logicalSideEffects = 0;
-    let forwardedEvent: Record<string, unknown> | null = null;
+    let forwardedEvent: Record<string, unknown> = {};
 
     await withProductUpstream(async (_input, init) => {
       const upstreamBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
@@ -164,12 +164,12 @@ async function main() {
     });
 
     assert.equal(logicalSideEffects, 1);
-    assert.equal(forwardedEvent?.id, event.id);
-    assert.equal(forwardedEvent?.task_id, TASK_ID);
-    assert.equal(forwardedEvent?.workspace_id, WORKSPACE_ID);
-    assert.equal(forwardedEvent?.ai_draft, event.ai_draft);
-    assert.equal(forwardedEvent?.user_final, event.user_final);
-    assert.equal(forwardedEvent?.edit_count, event.edit_count);
+    assert.equal(forwardedEvent.id, event.id);
+    assert.equal(forwardedEvent.task_id, TASK_ID);
+    assert.equal(forwardedEvent.workspace_id, WORKSPACE_ID);
+    assert.equal(forwardedEvent.ai_draft, event.ai_draft);
+    assert.equal(forwardedEvent.user_final, event.user_final);
+    assert.equal(forwardedEvent.edit_count, event.edit_count);
   }, { operation: "feedback.record", entityId: feedbackEvent().id, traceId: "trace-feedback-append" });
 
   await runP6Case("feedback ack enforces stable event identity and preserves trace", async () => {
