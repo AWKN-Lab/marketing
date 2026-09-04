@@ -17,6 +17,11 @@ import {
 } from "@/lib/task-execution-contract";
 import { expectedFeedbackEntityId, validateFeedbackProductRequest } from "@/lib/feedback-contract";
 import { expectedOutcomeEntityId, validateOutcomeProductRequest } from "@/lib/outcome-contract";
+import {
+  expectedLearningEntityId,
+  validateLearningProductRequest,
+  validateLearningProductResponse,
+} from "@/lib/learning-contract";
 
 const TIMEOUT_MS = 20_000;
 
@@ -63,7 +68,8 @@ export async function POST(request: Request) {
     ?? validateTaskProductRequest(body)
     ?? validateTaskExecutionProductRequest(body)
     ?? validateFeedbackProductRequest(body)
-    ?? validateOutcomeProductRequest(body);
+    ?? validateOutcomeProductRequest(body)
+    ?? validateLearningProductRequest(body);
   if (violation) {
     return NextResponse.json<MarketingProductResponse>(
       { ok: false, error: { code: violation.code, message: violation.message, retryable: false } },
@@ -92,12 +98,14 @@ export async function POST(request: Request) {
         ?? expectedTaskEntityId(body)
         ?? expectedTaskExecutionEntityId(body)
         ?? expectedFeedbackEntityId(body)
-        ?? expectedOutcomeEntityId(body),
+        ?? expectedOutcomeEntityId(body)
+        ?? expectedLearningEntityId(body),
       fallbackTraceId: traceFromHeaders(response),
       httpStatus: response.status,
     });
     normalized = validateTaskProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateTaskExecutionProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
+    normalized = validateLearningProductResponse(body.operation, normalized, body);
     const status = normalized.ok ? response.status : response.ok ? 502 : response.status;
     return NextResponse.json(normalized, { status });
   } catch (error) {
