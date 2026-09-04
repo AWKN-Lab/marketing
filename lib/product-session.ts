@@ -12,7 +12,15 @@ export const MARKETING_CAPABILITIES = [
   "team.manage",
 ] as const;
 
+export const SESSION_ERROR_CODES = [
+  "AUTH_REQUIRED",
+  "FORBIDDEN",
+  "SESSION_UNAVAILABLE",
+  "INVALID_SESSION_RESPONSE",
+] as const;
+
 export type MarketingCapability = (typeof MARKETING_CAPABILITIES)[number];
+export type SessionErrorCode = (typeof SESSION_ERROR_CODES)[number];
 export type WorkspaceAccess = "read" | "write" | "admin";
 export type WorkspaceGrant = { workspaceId: string; access: WorkspaceAccess };
 export type MarketingSession = {
@@ -36,34 +44,98 @@ export const LOCAL_MARKETING_SESSION: MarketingSession = {
   teamEnabled: false,
 };
 
-function record(value: unknown): Record<string, unknown> | null { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null; }
-function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
-function strings(value: unknown) { return Array.isArray(value) ? value.map(text).filter(Boolean) : []; }
-function normalizeCapability(value: string): MarketingCapability | null { return (MARKETING_CAPABILITIES as readonly string[]).includes(value) ? value as MarketingCapability : null; }
-function normalizeWorkspaceAccess(value: unknown): WorkspaceAccess { const access = text(value).toLowerCase(); return access === "admin" || access === "write" ? access : "read"; }
-
-export function normalizeMarketingSession(input: unknown): MarketingSession | null {
-  const root = record(input); if (!root) return null;
-  const row = record(root.data) ?? root;
-  const tenantRow = record(row.tenant); const actorRow = record(row.actor ?? row.user);
-  const tenantId = text(row.tenant_id ?? tenantRow?.id); const actorId = text(row.actor_id ?? row.user_id ?? actorRow?.id);
-  if (!tenantId || !actorId) return null;
-  const capabilities = strings(row.capabilities).map(normalizeCapability).filter((value): value is MarketingCapability => Boolean(value));
-  const grants = Array.isArray(row.workspace_grants ?? row.workspaceGrants) ? row.workspace_grants ?? row.workspaceGrants : [];
-  const workspaceGrants: WorkspaceGrant[] = (grants as unknown[]).flatMap((item) => { const grant = record(item); const workspaceId = text(grant?.workspace_id ?? grant?.workspaceId); return workspaceId ? [{ workspaceId, access: normalizeWorkspaceAccess(grant?.access) }] : []; });
-  return { mode: text(row.mode).toLowerCase() === "local" ? "local" : "platform", tenant: { id: tenantId, name: text(tenantRow?.name ?? row.tenant_name) || tenantId }, actor: { id: actorId, name: text(actorRow?.name ?? actorRow?.display_name ?? row.actor_name) || actorId }, roles: strings(row.roles), capabilities, workspaceGrants, teamEnabled: Boolean(row.team_enabled ?? row.teamEnabled ?? true) };
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
-export function hasMarketingCapability(session: MarketingSession, capability: MarketingCapability) { return session.capabilities.includes(capability); }
+function text(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function strings(value: unknown) {
+  return Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+}
+
+function normalizeCapability(value: string): MarketingCapability | null {
+  return (MARKETING_CAPABILITIES as readonly string[]).includes(value) ? value as MarketingCapability : null;
+}
+
+function normalizeWorkspaceAccess(value: unknown): WorkspaceAccess | null {
+  const access = text(value).toLowerCase();
+  return access === "read" || access === "write" || access === "admin" ? access : null;
+}
+
+export function sessionErrorCodeForStatus(status: number): SessionErrorCode {
+  if (status === 401) return "AUTH_REQUIRED";
+  if (status === 403) return "FORBIDDEN";
+  return "SESSION_UNAVAILABLE";
+}
+
+export function normalizeMarketingSession(input: unknown): MarketingSession | null {
+  const root = record(input);
+  if (!root) return null;
+  const row = record(root.data) ?? root;
+  const tenantRow = record(row.tenant);
+  const actorRow = record(row.actor ?? row.user);
+  const tenantId = text(row.tenant_id ?? tenantRow?.id);
+  const actorId = text(row.actor_id ?? row.user_id ?? actorRow?.id);
+  if (!tenantId || !actorId) return null;
+
+  const rawCapabilities = strings(row.capabilities);
+  const normalizedCapabilities = rawCapabilities.map(normalizeCapability);
+  if (normalizedCapabilities.some((value) => value === null)) return null;
+  const capabilities = [...new Set(normalizedCapabilities as MarketingCapability[])];
+
+  const rawGrants = row.workspace_grants ?? row.workspaceGrants ?? [];
+  if (!Array.isArray(rawGrants)) return null;
+  const workspaceGrants: WorkspaceGrant[] = [];
+  const seenWorkspaceIds = new Set<string>();
+  for (const item of rawGrants) {
+    const grant = record(item);
+    const workspaceId = text(grant?.workspace_id ?? grant?.workspaceId);
+    const access = normalizeWorkspaceAccess(grant?.access);
+    if (!workspaceId || !access || seenWorkspaceIds.has(workspaceId)) return null;
+    seenWorkspaceIds.add(workspaceId);
+    workspaceGrants.push({ workspaceId, access });
+  }
+
+  return {
+    mode: text(row.mode).toLowerCase() === "local" ? "local" : "platform",
+    tenant: { id: tenantId, name: text(tenantRow?.name ?? row.tenant_name) || tenantId },
+    actor: { id: actorId, name: text(actorRow?.name ?? actorRow?.display_name ?? row.actor_name) || actorId },
+    roles: [...new Set(strings(row.roles))],
+    capabilities,
+    workspaceGrants,
+    teamEnabled: Boolean(row.team_enabled ?? row.teamEnabled ?? true),
+  };
+}
+
+export function hasMarketingCapability(session: MarketingSession, capability: MarketingCapability) {
+  return session.capabilities.includes(capability);
+}
+
 const accessRank: Record<WorkspaceAccess, number> = { read: 1, write: 2, admin: 3 };
+
 export function hasWorkspaceAccess(session: MarketingSession, workspaceId: string, required: WorkspaceAccess) {
   if (session.mode === "local") return true;
   const grant = session.workspaceGrants.find((item) => item.workspaceId === workspaceId);
   return Boolean(grant && accessRank[grant.access] >= accessRank[required]);
 }
-export function canMarketingAction(session: MarketingSession, capability: MarketingCapability, workspaceId?: string, required: WorkspaceAccess = "write") {
+
+export function canMarketingAction(
+  session: MarketingSession,
+  capability: MarketingCapability,
+  workspaceId?: string,
+  required: WorkspaceAccess = "write",
+) {
   if (!hasMarketingCapability(session, capability)) return false;
   return workspaceId ? hasWorkspaceAccess(session, workspaceId, required) : true;
 }
-export function canReadWorkspace(session: MarketingSession, workspaceId: string) { return canMarketingAction(session, "workspace.read", workspaceId, "read"); }
-export function filterReadableWorkspaceItems<T>(session: MarketingSession, items: T[], workspaceIdOf: (item: T) => string) { return items.filter((item) => canReadWorkspace(session, workspaceIdOf(item))); }
+
+export function canReadWorkspace(session: MarketingSession, workspaceId: string) {
+  return canMarketingAction(session, "workspace.read", workspaceId, "read");
+}
+
+export function filterReadableWorkspaceItems<T>(session: MarketingSession, items: T[], workspaceIdOf: (item: T) => string) {
+  return items.filter((item) => canReadWorkspace(session, workspaceIdOf(item)));
+}
