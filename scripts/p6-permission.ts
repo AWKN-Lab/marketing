@@ -36,10 +36,10 @@ function platformSession(input: {
   return session;
 }
 
-async function withSessionUpstream(
+async function withSessionUpstream<T>(
   responseFactory: () => Promise<Response>,
-  run: () => Promise<void>,
-) {
+  run: () => Promise<T>,
+): Promise<T> {
   const previousEndpoint = process.env.AWKN_MARKETING_SESSION_URL;
   const previousToken = process.env.AWKN_MARKETING_SESSION_TOKEN;
   const previousFallback = process.env.AWKN_MARKETING_ALLOW_LOCAL_SESSION;
@@ -49,7 +49,7 @@ async function withSessionUpstream(
   process.env.AWKN_MARKETING_ALLOW_LOCAL_SESSION = "true";
   globalThis.fetch = (async () => responseFactory()) as typeof fetch;
   try {
-    await run();
+    return await run();
   } finally {
     if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_SESSION_URL;
     else process.env.AWKN_MARKETING_SESSION_URL = previousEndpoint;
@@ -62,8 +62,7 @@ async function withSessionUpstream(
 }
 
 async function sessionResponse(responseFactory: () => Promise<Response>) {
-  let output: { status: number; body: Record<string, unknown> } | null = null;
-  await withSessionUpstream(responseFactory, async () => {
+  return withSessionUpstream(responseFactory, async () => {
     const response = await sessionRoute(new Request("http://localhost/api/session", {
       headers: {
         authorization: "Bearer actor-token",
@@ -71,10 +70,8 @@ async function sessionResponse(responseFactory: () => Promise<Response>) {
         "x-request-id": "req-session-p6",
       },
     }));
-    output = { status: response.status, body: await response.json() as Record<string, unknown> };
+    return { status: response.status, body: await response.json() as Record<string, unknown> };
   });
-  assert.ok(output);
-  return output;
 }
 
 async function main() {
@@ -213,7 +210,7 @@ async function main() {
     }), { status: 200, headers: { "content-type": "application/json" } }));
     assert.equal(result.status, 200);
     assert.equal(result.body.mode, "platform");
-    assert.deepEqual((result.body.tenant as Record<string, unknown>).id, "tenant-live");
+    assert.equal((result.body.tenant as Record<string, unknown>).id, "tenant-live");
   }, { operation: "session.get", entityId: "tenant-live" });
 
   await runP6Case("session route normalizes 401 and preserves trace", async () => {
