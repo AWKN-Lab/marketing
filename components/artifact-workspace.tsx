@@ -7,6 +7,7 @@ import { OutcomeCapture } from "@/components/outcome-capture";
 import { useProductSession } from "@/components/product-session-provider";
 import { candidateFingerprint, createExperienceCandidate, LOCAL_CANDIDATES_KEY, type LocalEvolutionCandidate } from "@/lib/evolution-store";
 import { buildFeedbackEvent, feedbackRecordIdempotencyKey, isFeedbackDisposition } from "@/lib/feedback-contract";
+import { buildOutcomeEvent, isOutcomeInput, isOutcomeValue, outcomeRecordIdempotencyKey, requiresOutcomeReason } from "@/lib/outcome-contract";
 import { canMarketingAction } from "@/lib/product-session";
 import { snapshotFingerprint } from "@/lib/reconcile";
 import { readSyncRecord, syncMarketingProduct } from "@/lib/sync-store";
@@ -71,10 +72,65 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
       snapshot: feedbackEvent,
     });
   }
-  function handleOutcome(value: string) { if (!canOutcome) return; setOutcome(value); scheduleExecutionSync(executionWith({ outcome: value }), 0); }
+  function handleOutcome(value: string) { if (!canOutcome || !isOutcomeInput(value)) return; setOutcome(value); scheduleExecutionSync(executionWith({ outcome: value }), 0); }
   function handleOutcomeNote(value: string) { if (!canOutcome) return; setOutcomeNote(value); scheduleExecutionSync(executionWith({ outcomeNote: value })); }
   function applyPlatformExecution(remote: TaskExecutionState) { if (!canRead) return; setFinalText(remote.finalText); setFeedback(remote.feedback); setOutcome(remote.outcome); setOutcomeNote(remote.outcomeNote); executionRef.current = { ...remote, id: executionEntityId, taskId, workspaceId }; }
-  function createCandidate() { if (!canOutcome || !feedback || !outcome) return; const candidate = createExperienceCandidate({ taskId, workspaceId, taskType, taskGoal, artifactTitle, feedback, outcome, outcomeNote, editCount: diffSummary.removed.length + diffSummary.added.length, fingerprint }); setLocalCandidates([candidate, ...localCandidates.filter((item) => item.taskId !== taskId)]); const snapshot = executionWith({ finalText, feedback, outcome, outcomeNote }); scheduleExecutionSync(snapshot, 0); void syncMarketingProduct({ entityKey: `outcome:${taskId}`, operation: "outcome.record", workspaceId, taskId, payload: { outcome, reason: outcomeNote || undefined, feedback, artifact_text: finalText, evidence_refs: agentResult?.evidenceRefs ?? agentResult?.evidence.map((item) => item.id || item.url || item.source) ?? [], run_id: agentResult?.runId, trace_id: agentResult?.traceId } }); }
+  function createCandidate() {
+    if (!canOutcome || !feedback || !outcome || !isFeedbackDisposition(feedback) || !isOutcomeInput(outcome)) return;
+    if (requiresOutcomeReason(outcome) && outcomeNote.trim().length < 3) return;
+
+    const snapshot = executionWith({ finalText, feedback, outcome, outcomeNote });
+    scheduleExecutionSync(snapshot, 0);
+    const feedbackEvent = buildFeedbackEvent({
+      workspaceId,
+      taskId,
+      feedback,
+      artifactTitle,
+      aiDraft: agentDraft,
+      userFinal: finalText,
+      runId: agentResult?.runId,
+      traceId: agentResult?.traceId,
+    });
+    const outcomeEvent = buildOutcomeEvent({
+      execution: snapshot,
+      feedbackEventId: feedbackEvent.id,
+      evidenceRefs: agentResult?.evidenceRefs ?? agentResult?.evidence.map((item) => item.id || item.url || item.source) ?? [],
+      runId: agentResult?.runId,
+      traceId: agentResult?.traceId,
+    });
+    if (!outcomeEvent) return;
+
+    void (async () => {
+      const feedbackResponse = await syncMarketingProduct({
+        entityKey: `feedback:${feedbackEvent.id}`,
+        operation: "feedback.record",
+        workspaceId,
+        taskId,
+        expectedEntityId: feedbackEvent.id,
+        idempotencyKey: feedbackRecordIdempotencyKey(feedbackEvent.id),
+        payload: { feedback_event: feedbackEvent },
+        snapshot: feedbackEvent,
+      });
+      if (!feedbackResponse.ok && feedbackResponse.error?.code !== "PLATFORM_NOT_CONFIGURED") return;
+
+      const outcomeResponse = await syncMarketingProduct({
+        entityKey: `outcome:${outcomeEvent.id}`,
+        operation: "outcome.record",
+        workspaceId,
+        taskId,
+        expectedEntityId: outcomeEvent.id,
+        idempotencyKey: outcomeRecordIdempotencyKey(outcomeEvent.id),
+        payload: { outcome_event: outcomeEvent },
+        snapshot: outcomeEvent,
+      });
+      if (!outcomeResponse.ok && outcomeResponse.error?.code !== "PLATFORM_NOT_CONFIGURED") return;
+
+      if (isOutcomeValue(outcome)) {
+        const candidate = createExperienceCandidate({ taskId, workspaceId, taskType, taskGoal, artifactTitle, feedback, outcome, outcomeNote, editCount: diffSummary.removed.length + diffSummary.added.length, fingerprint });
+        setLocalCandidates((current) => [candidate, ...current.filter((item) => item.taskId !== taskId)]);
+      }
+    })();
+  }
 
   return <section className="artifact-panel">
     <EntityReconcilePanel<TaskExecutionState> entityLabel="Task Execution" entityKey={executionEntityKey} entityId={executionEntityId} workspaceId={workspaceId} taskId={taskId} getOperation="task.execution.get" updateOperation="task.execution.upsert" localEntity={currentExecution} canRead={canRead} canWrite={canExecutionWrite} buildUpdatePayload={(entity, baseRevision) => ({ execution: entity, base_revision: baseRevision })} onApplyPlatform={applyPlatformExecution}/>
