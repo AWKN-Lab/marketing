@@ -106,6 +106,32 @@ async function main() {
     }), null);
   });
 
+  await runP6Case("session rejects unknown mode and malformed team flag", () => {
+    assert.equal(normalizeMarketingSession({
+      mode: "elevated",
+      tenant_id: "tenant",
+      actor_id: "actor",
+      capabilities: ["workspace.read"],
+      workspace_grants: [],
+    }), null);
+    assert.equal(normalizeMarketingSession({
+      mode: "platform",
+      tenant_id: "tenant",
+      actor_id: "actor",
+      capabilities: ["workspace.read"],
+      workspace_grants: [],
+      team_enabled: "false",
+    }), null);
+    assert.equal(normalizeMarketingSession({
+      mode: "platform",
+      tenant_id: "tenant",
+      actor_id: "actor",
+      capabilities: ["workspace.read"],
+      workspace_grants: [],
+      team_enabled: false,
+    })?.teamEnabled, false);
+  });
+
   const actionMatrix: Array<{ capability: MarketingCapability; workspaceId?: string; required?: WorkspaceAccess; allowed: boolean }> = [
     { capability: "workspace.read", workspaceId: "w-read", required: "read", allowed: true },
     { capability: "workspace.write", workspaceId: "w-write", required: "write", allowed: true },
@@ -256,6 +282,16 @@ async function main() {
     }), { status: 200, headers: { "content-type": "application/json" } }));
     assert.equal(localMode.status, 502);
     assert.equal(localMode.body.error, "INVALID_SESSION_RESPONSE");
+
+    const unknownMode = await sessionResponse(async () => new Response(JSON.stringify({
+      mode: "elevated",
+      tenant_id: "tenant-live",
+      actor_id: "actor-live",
+      capabilities: ["workspace.read"],
+      workspace_grants: [],
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    assert.equal(unknownMode.status, 502);
+    assert.equal(unknownMode.body.error, "INVALID_SESSION_RESPONSE");
   }, { operation: "session.get" });
 }
 
