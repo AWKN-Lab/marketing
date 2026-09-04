@@ -1,5 +1,6 @@
 "use client";
 
+import { materialParseRetryIdempotencyKey } from "@/lib/material-contract";
 import { callMarketingProduct } from "@/lib/product-client";
 import type { MaterialUploadAck, MaterialUploadData } from "@/lib/material-upload";
 
@@ -26,11 +27,15 @@ export async function refreshMaterialParse(input: { workspaceId: string; materia
   });
 }
 
-export async function retryMaterialParse(input: { workspaceId: string; materialId: string }): Promise<MaterialUploadAck> {
-  return callMarketingProduct<MaterialUploadData, { material_id: string }>({
+export async function retryMaterialParse(input: { workspaceId: string; materialId: string; baseRevision?: number }): Promise<MaterialUploadAck> {
+  const payload: { material_id: string; base_revision?: number } = { material_id: input.materialId };
+  if (typeof input.baseRevision === "number" && Number.isSafeInteger(input.baseRevision) && input.baseRevision > 0) {
+    payload.base_revision = input.baseRevision;
+  }
+  return callMarketingProduct<MaterialUploadData, typeof payload>({
     operation: "material.parse.retry",
     workspaceId: input.workspaceId,
-    idempotencyKey: `material.parse.retry:${input.materialId}`,
-    payload: { material_id: input.materialId },
+    idempotencyKey: materialParseRetryIdempotencyKey(input.materialId, input.baseRevision),
+    payload,
   });
 }

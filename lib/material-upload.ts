@@ -11,12 +11,16 @@ export type MaterialEvidence = {
 export type MaterialParseState = "uploading" | "queued" | "parsing" | "ready" | "failed" | "local-only";
 
 export type MaterialUploadData = {
-  material_id: string;
+  material_id?: string;
+  entity_id?: string;
   parse_status?: string;
+  status?: string;
   parsed_text?: string;
   evidence?: unknown[];
   revision?: number;
   updated_at?: string;
+  run_id?: string;
+  attempt?: number;
 };
 
 export type MaterialUploadAck = MarketingProductResponse<MaterialUploadData>;
@@ -29,15 +33,31 @@ export type MaterialPlatformResult = {
   evidence: MaterialEvidence[];
   traceId?: string;
   revision?: number;
+  updatedAt?: string;
+  runId?: string;
+  attempt?: number;
   error?: { code: string; message: string; retryable?: boolean };
 };
 
-export function normalizeMaterialParseState(value: unknown): MaterialParseState {
-  const status = typeof value === "string" ? value.toLowerCase() : "queued";
-  if (["ready", "completed", "complete", "done", "parsed", "success"].includes(status)) return "ready";
-  if (["parsing", "processing", "extracting", "indexing"].includes(status)) return "parsing";
+function validRevision(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function validUpdatedAt(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function parseState(value: unknown): MaterialParseState | null {
+  const status = typeof value === "string" ? value.toLowerCase() : "";
+  if (["queued", "waiting", "pending"].includes(status)) return "queued";
+  if (["parsing", "processing", "extracting", "indexing", "running", "in_progress"].includes(status)) return "parsing";
+  if (["ready", "completed", "complete", "done", "parsed", "success", "succeeded"].includes(status)) return "ready";
   if (["failed", "error", "rejected"].includes(status)) return "failed";
-  return "queued";
+  return null;
+}
+
+export function normalizeMaterialParseState(value: unknown): MaterialParseState {
+  return parseState(value) ?? "queued";
 }
 
 export function materialParseLabel(state: MaterialParseState) {
@@ -66,29 +86,65 @@ function normalizeEvidence(value: unknown): MaterialEvidence[] {
   });
 }
 
-export function normalizeMaterialUploadAck(response: MaterialUploadAck, expectedMaterialId: string): MaterialPlatformResult {
+export function normalizeMaterialUploadAck(
+  response: MaterialUploadAck,
+  expectedMaterialId: string,
+  options: { strict?: boolean } = {},
+): MaterialPlatformResult {
   if (!response.ok) {
     const localOnly = response.error?.code === "PLATFORM_NOT_CONFIGURED";
     const state: MaterialParseState = localOnly ? "local-only" : "failed";
     return { ok: false, state, label: materialParseLabel(state), evidence: [], traceId: response.trace_id, error: response.error };
   }
-  if (!response.data || typeof response.data.material_id !== "string") {
+
+  const data = response.data;
+  const materialId = typeof data?.material_id === "string" && data.material_id.trim()
+    ? data.material_id.trim()
+    : typeof data?.entity_id === "string" ? data.entity_id.trim() : "";
+  if (!materialId) {
     const error = { code: "MISSING_MATERIAL_ACK", message: `平台没有确认资料 ID：${expectedMaterialId}` };
     return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
   }
-  if (response.data.material_id !== expectedMaterialId) {
-    const error = { code: "MATERIAL_IDENTITY_MISMATCH", message: `平台返回资料 ID ${response.data.material_id}，与产品 ID ${expectedMaterialId} 不一致。` };
+  if (materialId !== expectedMaterialId) {
+    const error = { code: "MATERIAL_IDENTITY_MISMATCH", message: `平台返回资料 ID ${materialId}，与产品 ID ${expectedMaterialId} 不一致。` };
     return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
   }
-  const state = normalizeMaterialParseState(response.data.parse_status);
+
+  if (options.strict && !validRevision(data?.revision)) {
+    const error = { code: "INVALID_REVISION", message: `平台返回了无效资料 revision：${String(data?.revision ?? "MISSING")}` };
+    return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
+  }
+  if (typeof data?.revision !== "undefined" && !validRevision(data.revision)) {
+    const error = { code: "INVALID_REVISION", message: `平台返回了无效资料 revision：${String(data.revision)}` };
+    return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
+  }
+  if (options.strict && !validUpdatedAt(data?.updated_at)) {
+    const error = { code: "VALIDATION_ERROR", message: "平台资料 Ack 缺少有效 updated_at。" };
+    return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
+  }
+  if (typeof data?.updated_at !== "undefined" && !validUpdatedAt(data.updated_at)) {
+    const error = { code: "VALIDATION_ERROR", message: "平台资料 Ack 返回了无效 updated_at。" };
+    return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
+  }
+
+  const stateValue = data?.parse_status ?? data?.status;
+  const normalizedState = parseState(stateValue);
+  if (options.strict && !normalizedState) {
+    const error = { code: "VALIDATION_ERROR", message: "平台资料 Ack 缺少有效 parse_status / status。" };
+    return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
+  }
+  const state = normalizedState ?? "queued";
   return {
-    ok: state !== "failed",
+    ok: true,
     state,
     label: materialParseLabel(state),
-    parsedText: typeof response.data.parsed_text === "string" ? response.data.parsed_text : undefined,
-    evidence: normalizeEvidence(response.data.evidence),
+    parsedText: typeof data?.parsed_text === "string" ? data.parsed_text : undefined,
+    evidence: normalizeEvidence(data?.evidence),
     traceId: response.trace_id,
-    revision: response.data.revision,
-    error: state === "failed" ? { code: "MATERIAL_PARSE_FAILED", message: "AWKN 返回资料解析失败。" } : undefined,
+    revision: validRevision(data?.revision) ? data.revision : undefined,
+    updatedAt: validUpdatedAt(data?.updated_at) ? data.updated_at : undefined,
+    runId: typeof data?.run_id === "string" && data.run_id.trim() ? data.run_id.trim() : undefined,
+    attempt: typeof data?.attempt === "number" && Number.isSafeInteger(data.attempt) && data.attempt > 0 ? data.attempt : undefined,
+    error: state === "failed" ? { code: "MATERIAL_PARSE_FAILED", message: "AWKN 返回资料解析失败。", retryable: true } : undefined,
   };
 }
