@@ -99,8 +99,9 @@ export function createExperienceCandidate(input: {
   const confidence = Math.min(0.75, confidenceBase + (input.feedback === "采用" ? 0.05 : 0) + (input.outcomeNote.trim() ? 0.05 : 0));
   const id = evolutionCandidateId(input.taskId);
   const previous = input.previousCandidate?.id === id ? input.previousCandidate : undefined;
+  const sameCandidate = Boolean(previous && previous.fingerprint === input.fingerprint);
   const previousRevision = previous ? candidateRevision(previous) : 0;
-  const revision = previous && previous.fingerprint === input.fingerprint ? previousRevision : previousRevision + 1;
+  const revision = sameCandidate ? previousRevision : previousRevision + 1;
 
   return {
     id,
@@ -111,7 +112,7 @@ export function createExperienceCandidate(input: {
     polarity,
     fingerprint: input.fingerprint,
     revision: Math.max(1, revision),
-    createdAt: new Date().toISOString(),
+    createdAt: sameCandidate && previous ? previous.createdAt : new Date().toISOString(),
     type: isFailure ? "Counterexample Candidate" : "Experience Candidate",
     lesson,
     why: `Feedback：${input.feedback}；Outcome：${input.outcome}；AI 初稿与用户最终稿存在 ${input.editCount} 处结构化差异。${input.outcomeNote.trim() ? ` 结果说明：${input.outcomeNote.trim()}` : " 当前缺少结果原因说明，置信度已降低。"}`,
@@ -132,16 +133,17 @@ export function createExperienceCandidate(input: {
 }
 
 export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandidate) {
+  const evidence = candidate.evidence;
   return Boolean(
     candidate.workspaceId
     && candidate.taskId
     && candidate.fingerprint
     && candidate.revision
-    && candidate.evidence
-    && candidate.evidence.ai_draft.trim()
-    && candidate.evidence.user_final.trim()
-    && candidate.evidence.feedback_event_id.startsWith(`feedback-event:${candidate.taskId}:`)
-    && candidate.evidence.outcome_event_id.startsWith(`outcome-event:${candidate.taskId}:`),
+    && evidence
+    && evidence.ai_draft.trim()
+    && evidence.user_final.trim()
+    && evidence.feedback_event_id.startsWith(`feedback-event:${candidate.taskId}:`)
+    && evidence.outcome_event_id.startsWith(`outcome-event:${candidate.taskId}:`),
   );
 }
 
