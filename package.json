@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:p0": "tsx scripts/p0-acceptance.ts"
+    "test:p0": "tsx scripts/p0-acceptance.ts",
+    "test:p6:contract": "tsx scripts/p6-contract.ts",
+    "test:p6:permission": "tsx scripts/p6-permission.ts",
+    "test:p6:idempotency": "tsx scripts/p6-idempotency.ts",
+    "test:p6:revision": "tsx scripts/p6-revision.ts",
+    "test:p6:integration": "tsx scripts/p6-integration-config.ts",
+    "test:p6:ci-guard": "tsx scripts/p6-ci-guard.ts",
+    "test:p6": "npm run test:p6:contract && npm run test:p6:permission && npm run test:p6:idempotency && npm run test:p6:revision && npm run test:p6:integration && npm run test:p6:ci-guard"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.17",
