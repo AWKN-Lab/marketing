@@ -7,7 +7,7 @@ import {
   learningWatchUpsertIdempotencyKey,
   validateLearningProductRequest,
 } from "../lib/learning-contract.ts";
-import { normalizeLearningRun } from "../lib/learning-run-store.ts";
+import { mergeLearningRun, normalizeLearningRun } from "../lib/learning-run-store.ts";
 import { createLearningWatch } from "../lib/learning-store.ts";
 import { canMarketingAction, filterReadableWorkspaceItems, type MarketingSession } from "../lib/product-session.ts";
 import { runP6Case } from "./p6-test-support.ts";
@@ -294,6 +294,32 @@ async function main() {
       assert.equal((result.body.error as Record<string, unknown>).code, "VALIDATION_ERROR");
     });
   }, { operation: "learning.run.get", entityId: RUN_ID, traceId: "trace-learning-p6" });
+
+  await runP6Case("learning merge rejects stale retry snapshots", () => {
+    const current = normalizeLearningRun({
+      data: { run_id: RUN_ID, status: "running", attempt: 2, trace_id: "trace-attempt-2" },
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      startedAt: NOW,
+    });
+    const staleAttempt = normalizeLearningRun({
+      data: { run_id: RUN_ID, status: "failed", attempt: 1, error: "stale attempt" },
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      startedAt: NOW,
+    });
+    const staleState = normalizeLearningRun({
+      data: { run_id: RUN_ID, status: "queued", attempt: 2 },
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      startedAt: NOW,
+    });
+    assert.ok(current);
+    assert.ok(staleAttempt);
+    assert.ok(staleState);
+    assert.deepEqual(mergeLearningRun(current, staleAttempt), current);
+    assert.deepEqual(mergeLearningRun(current, staleState), current);
+  }, { operation: "learning.run.get", entityId: RUN_ID });
 
   await runP6Case("revoked workspace removes learning visibility and action eligibility", () => {
     const session: MarketingSession = {
