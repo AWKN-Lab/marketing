@@ -133,7 +133,12 @@ export function normalizeMaterialUploadAck(
     const error = { code: "VALIDATION_ERROR", message: "平台资料 Ack 缺少有效 parse_status / status。" };
     return { ok: false, state: "failed", label: materialParseLabel("failed"), evidence: [], traceId: response.trace_id, error };
   }
+
   const state = normalizedState ?? "queued";
+  const revision = data?.revision;
+  const updatedAt = data?.updated_at;
+  const runId = data?.run_id;
+  const attempt = data?.attempt;
   return {
     ok: true,
     state,
@@ -141,10 +146,10 @@ export function normalizeMaterialUploadAck(
     parsedText: typeof data?.parsed_text === "string" ? data.parsed_text : undefined,
     evidence: normalizeEvidence(data?.evidence),
     traceId: response.trace_id,
-    revision: validRevision(data?.revision) ? data.revision : undefined,
-    updatedAt: validUpdatedAt(data?.updated_at) ? data.updated_at : undefined,
-    runId: typeof data?.run_id === "string" && data.run_id.trim() ? data.run_id.trim() : undefined,
-    attempt: typeof data?.attempt === "number" && Number.isSafeInteger(data.attempt) && data.attempt > 0 ? data.attempt : undefined,
+    revision: validRevision(revision) ? revision : undefined,
+    updatedAt: validUpdatedAt(updatedAt) ? updatedAt : undefined,
+    runId: typeof runId === "string" && runId.trim() ? runId.trim() : undefined,
+    attempt: typeof attempt === "number" && Number.isSafeInteger(attempt) && attempt > 0 ? attempt : undefined,
     error: state === "failed" ? { code: "MATERIAL_PARSE_FAILED", message: "AWKN 返回资料解析失败。", retryable: true } : undefined,
   };
 }
