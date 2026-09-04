@@ -2,7 +2,6 @@ import {
   agentRunIdempotencyKey,
   normalizeAgentRuntimeResponse,
   normalizeMarketingAgentInput,
-  type MarketingAgentRouteResponse,
 } from "@/lib/agent-contract";
 import { upstreamIdentityHeaders } from "@/lib/server-upstream-auth";
 
@@ -16,7 +15,7 @@ function traceFromHeaders(response: Response) {
 }
 
 function errorResponse(code: string, message: string, status: number, retryable = false, traceId?: string) {
-  return Response.json<MarketingAgentRouteResponse>({ ok: false, error: { code, message, retryable }, trace_id: traceId }, { status });
+  return Response.json({ ok: false, error: { code, message, retryable }, trace_id: traceId }, { status });
 }
 
 export async function POST(request: Request) {
