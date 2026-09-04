@@ -136,6 +136,87 @@ async function main() {
       finalConsistency: "manual-reconcile-required",
     });
   }, { operation: "workspace.get", entityId: "w1" });
+
+  const newerPlatformRevision = 4;
+  const platformV4 = { id: "w1", name: "Platform v4" };
+  const platformV4Fingerprint = snapshotFingerprint(platformV4);
+
+  await runP6Case("W7-02 newer server revision is authoritative when local snapshot is unchanged", () => {
+    const result = reconcileSnapshots({
+      localSnapshot: baseline,
+      platformSnapshot: platformV4,
+      platformRevision: newerPlatformRevision,
+      baselineFingerprint,
+      baselineRevision: equalRevision,
+    });
+    assert.equal(result.state, "platform-newer");
+    assert.equal(result.platformRevision, newerPlatformRevision);
+    assert.notEqual(result.platformFingerprint, baselineFingerprint);
+    assertP6FaultMatrixRecord({
+      operation: "workspace.get",
+      expectedState: "platform-newer",
+      actualState: result.state,
+      errorCode: null,
+      retryable: null,
+      requestId: "w7-02-platform-newer",
+      idempotencyKey: null,
+      traceId: "trace-w7-02-platform-newer",
+      sideEffectCount: 0,
+      finalRevision: result.platformRevision,
+      finalConsistency: "newer-platform-revision-visible-before-explicit-accept",
+    });
+  }, { operation: "workspace.get", entityId: "w1", traceId: "trace-w7-02-platform-newer" });
+
+  await runP6Case("W7-02 local edit plus newer server revision remains a conflict", () => {
+    const result = reconcileSnapshots({
+      localSnapshot: { id: "w1", name: "Unsynced local edit" },
+      platformSnapshot: platformV4,
+      platformRevision: newerPlatformRevision,
+      baselineFingerprint,
+      baselineRevision: equalRevision,
+    });
+    assert.equal(result.state, "conflict");
+    assertP6FaultMatrixRecord({
+      operation: "workspace.get",
+      expectedState: "conflict",
+      actualState: result.state,
+      errorCode: null,
+      retryable: null,
+      requestId: "w7-02-platform-newer-with-local-edit",
+      idempotencyKey: null,
+      traceId: "trace-w7-02-conflict",
+      sideEffectCount: 0,
+      finalRevision: result.platformRevision,
+      finalConsistency: "newer-platform-does-not-silently-discard-local-edit",
+    });
+  }, { operation: "workspace.get", entityId: "w1", traceId: "trace-w7-02-conflict" });
+
+  await runP6Case("W7-02 explicit platform acceptance establishes the newer revision baseline", () => {
+    const result = reconcileSnapshots({
+      localSnapshot: platformV4,
+      platformSnapshot: platformV4,
+      platformRevision: newerPlatformRevision,
+      baselineFingerprint: platformV4Fingerprint,
+      baselineRevision: newerPlatformRevision,
+    });
+    assert.equal(result.state, "clean");
+    assert.equal(result.platformRevision, newerPlatformRevision);
+    assert.equal(result.localFingerprint, platformV4Fingerprint);
+    assert.equal(result.platformFingerprint, platformV4Fingerprint);
+    assertP6FaultMatrixRecord({
+      operation: "workspace.get",
+      expectedState: "clean",
+      actualState: result.state,
+      errorCode: null,
+      retryable: null,
+      requestId: "w7-02-platform-accepted",
+      idempotencyKey: null,
+      traceId: "trace-w7-02-accepted",
+      sideEffectCount: 0,
+      finalRevision: result.platformRevision,
+      finalConsistency: "accepted-platform-snapshot-is-new-baseline",
+    });
+  }, { operation: "workspace.get", entityId: "w1", traceId: "trace-w7-02-accepted" });
 }
 
 main().catch((error) => {
