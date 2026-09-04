@@ -7,6 +7,7 @@ import {
   type MarketingProductResponse,
 } from "@/lib/product-contract";
 import { upstreamIdentityHeaders } from "@/lib/server-upstream-auth";
+import { expectedWorkspaceEntityId, validateWorkspaceProductRequest } from "@/lib/workspace-contract";
 
 const TIMEOUT_MS = 20_000;
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const violation = validateProductRequestContract(body);
+  const violation = validateProductRequestContract(body) ?? validateWorkspaceProductRequest(body);
   if (violation) {
     return NextResponse.json<MarketingProductResponse>(
       { ok: false, error: { code: violation.code, message: violation.message, retryable: false } },
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
 
     const raw = await response.json().catch(() => null);
     const normalized = normalizeProductResponseContract(body.operation, raw, {
+      expectedEntityId: expectedWorkspaceEntityId(body),
       fallbackTraceId: traceFromHeaders(response),
       httpStatus: response.status,
     });
