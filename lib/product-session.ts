@@ -65,6 +65,18 @@ function normalizeWorkspaceAccess(value: unknown): WorkspaceAccess | null {
   return access === "read" || access === "write" || access === "admin" ? access : null;
 }
 
+function normalizeSessionMode(value: unknown): MarketingSession["mode"] | null {
+  const mode = text(value).toLowerCase();
+  if (!mode || mode === "platform") return "platform";
+  if (mode === "local") return "local";
+  return null;
+}
+
+function normalizeTeamEnabled(value: unknown): boolean | null {
+  if (typeof value === "undefined") return true;
+  return typeof value === "boolean" ? value : null;
+}
+
 export function sessionErrorCodeForStatus(status: number): SessionErrorCode {
   if (status === 401) return "AUTH_REQUIRED";
   if (status === 403) return "FORBIDDEN";
@@ -80,6 +92,10 @@ export function normalizeMarketingSession(input: unknown): MarketingSession | nu
   const tenantId = text(row.tenant_id ?? tenantRow?.id);
   const actorId = text(row.actor_id ?? row.user_id ?? actorRow?.id);
   if (!tenantId || !actorId) return null;
+
+  const mode = normalizeSessionMode(row.mode);
+  const teamEnabled = normalizeTeamEnabled(row.team_enabled ?? row.teamEnabled);
+  if (!mode || teamEnabled === null) return null;
 
   const rawCapabilities = strings(row.capabilities);
   const normalizedCapabilities = rawCapabilities.map(normalizeCapability);
@@ -100,13 +116,13 @@ export function normalizeMarketingSession(input: unknown): MarketingSession | nu
   }
 
   return {
-    mode: text(row.mode).toLowerCase() === "local" ? "local" : "platform",
+    mode,
     tenant: { id: tenantId, name: text(tenantRow?.name ?? row.tenant_name) || tenantId },
     actor: { id: actorId, name: text(actorRow?.name ?? actorRow?.display_name ?? row.actor_name) || actorId },
     roles: [...new Set(strings(row.roles))],
     capabilities,
     workspaceGrants,
-    teamEnabled: Boolean(row.team_enabled ?? row.teamEnabled ?? true),
+    teamEnabled,
   };
 }
 
