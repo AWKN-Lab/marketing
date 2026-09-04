@@ -15,6 +15,7 @@ import {
   validateTaskExecutionProductRequest,
   validateTaskExecutionProductResponse,
 } from "@/lib/task-execution-contract";
+import { expectedFeedbackEntityId, validateFeedbackProductRequest } from "@/lib/feedback-contract";
 
 const TIMEOUT_MS = 20_000;
 
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
     ?? validateWorkspaceProductRequest(body)
     ?? validateMaterialProductRequest(body)
     ?? validateTaskProductRequest(body)
-    ?? validateTaskExecutionProductRequest(body);
+    ?? validateTaskExecutionProductRequest(body)
+    ?? validateFeedbackProductRequest(body);
   if (violation) {
     return NextResponse.json<MarketingProductResponse>(
       { ok: false, error: { code: violation.code, message: violation.message, retryable: false } },
@@ -86,7 +88,8 @@ export async function POST(request: Request) {
       expectedEntityId: expectedWorkspaceEntityId(body)
         ?? expectedMaterialEntityId(body)
         ?? expectedTaskEntityId(body)
-        ?? expectedTaskExecutionEntityId(body),
+        ?? expectedTaskExecutionEntityId(body)
+        ?? expectedFeedbackEntityId(body),
       fallbackTraceId: traceFromHeaders(response),
       httpStatus: response.status,
     });

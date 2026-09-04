@@ -6,6 +6,7 @@ import { FeedbackCapture } from "@/components/feedback-capture";
 import { OutcomeCapture } from "@/components/outcome-capture";
 import { useProductSession } from "@/components/product-session-provider";
 import { candidateFingerprint, createExperienceCandidate, LOCAL_CANDIDATES_KEY, type LocalEvolutionCandidate } from "@/lib/evolution-store";
+import { buildFeedbackEvent, feedbackRecordIdempotencyKey, isFeedbackDisposition } from "@/lib/feedback-contract";
 import { canMarketingAction } from "@/lib/product-session";
 import { snapshotFingerprint } from "@/lib/reconcile";
 import { readSyncRecord, syncMarketingProduct } from "@/lib/sync-store";
@@ -44,7 +45,32 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
   async function flushExecutionSync(snapshot: TaskExecutionState) { if (!canExecutionWrite) return; if (syncInFlight.current) { queuedExecution.current = snapshot; return; } syncInFlight.current = true; try { const baseline = readSyncRecord(executionEntityKey); await syncMarketingProduct({ entityKey: executionEntityKey, operation: "task.execution.upsert", workspaceId, taskId, expectedEntityId: executionEntityId, idempotencyKey: `task.execution.upsert:${executionEntityId}:${baseline?.platformRevision ?? "new"}:${snapshotFingerprint(snapshot)}`, payload: { execution: snapshot, base_revision: baseline?.platformRevision }, snapshot }); } finally { syncInFlight.current = false; const next = queuedExecution.current; queuedExecution.current = null; if (next) void flushExecutionSync(next); } }
   function scheduleExecutionSync(snapshot: TaskExecutionState, delay = 700) { if (!canExecutionWrite) return; if (syncTimer.current !== null) window.clearTimeout(syncTimer.current); syncTimer.current = window.setTimeout(() => void flushExecutionSync(snapshot), delay); }
   function handleFinalText(value: string) { if (!canExecutionWrite) return; setFinalText(value); scheduleExecutionSync(executionWith({ finalText: value })); }
-  function handleFeedback(value: string) { if (!canFeedback) return; setFeedback(value); const snapshot = executionWith({ feedback: value, finalText }); scheduleExecutionSync(snapshot, 0); void syncMarketingProduct({ entityKey: `feedback:${taskId}`, operation: "feedback.record", workspaceId, taskId, payload: { feedback: value, artifact_text: finalText, artifact_title: artifactTitle } }); }
+  function handleFeedback(value: string) {
+    if (!canFeedback || !isFeedbackDisposition(value)) return;
+    setFeedback(value);
+    const snapshot = executionWith({ feedback: value, finalText });
+    scheduleExecutionSync(snapshot, 0);
+    const feedbackEvent = buildFeedbackEvent({
+      workspaceId,
+      taskId,
+      feedback: value,
+      artifactTitle,
+      aiDraft: agentDraft,
+      userFinal: finalText,
+      runId: agentResult?.runId,
+      traceId: agentResult?.traceId,
+    });
+    void syncMarketingProduct({
+      entityKey: `feedback:${feedbackEvent.id}`,
+      operation: "feedback.record",
+      workspaceId,
+      taskId,
+      expectedEntityId: feedbackEvent.id,
+      idempotencyKey: feedbackRecordIdempotencyKey(feedbackEvent.id),
+      payload: { feedback_event: feedbackEvent },
+      snapshot: feedbackEvent,
+    });
+  }
   function handleOutcome(value: string) { if (!canOutcome) return; setOutcome(value); scheduleExecutionSync(executionWith({ outcome: value }), 0); }
   function handleOutcomeNote(value: string) { if (!canOutcome) return; setOutcomeNote(value); scheduleExecutionSync(executionWith({ outcomeNote: value })); }
   function applyPlatformExecution(remote: TaskExecutionState) { if (!canRead) return; setFinalText(remote.finalText); setFeedback(remote.feedback); setOutcome(remote.outcome); setOutcomeNote(remote.outcomeNote); executionRef.current = { ...remote, id: executionEntityId, taskId, workspaceId }; }

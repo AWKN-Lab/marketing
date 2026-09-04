@@ -18,9 +18,10 @@
     "test:p6:task-execution": "tsx scripts/p6-task-execution.ts",
     "test:p6:task-execution-projection": "tsx scripts/p6-task-execution-projection.ts",
     "test:p6:agent": "tsx scripts/p6-agent.ts",
+    "test:p6:feedback": "tsx scripts/p6-feedback.ts",
     "test:p6:integration": "tsx scripts/p6-integration-config.ts",
     "test:p6:ci-guard": "tsx scripts/p6-ci-guard.ts",
-    "test:p6": "npm run test:p6:contract && npm run test:p6:permission && npm run test:p6:idempotency && npm run test:p6:revision && npm run test:p6:workspace && npm run test:p6:material && npm run test:p6:task && npm run test:p6:task-execution && npm run test:p6:task-execution-projection && npm run test:p6:agent && npm run test:p6:integration && npm run test:p6:ci-guard"
+    "test:p6": "npm run test:p6:contract && npm run test:p6:permission && npm run test:p6:idempotency && npm run test:p6:revision && npm run test:p6:workspace && npm run test:p6:material && npm run test:p6:task && npm run test:p6:task-execution && npm run test:p6:task-execution-projection && npm run test:p6:agent && npm run test:p6:feedback && npm run test:p6:integration && npm run test:p6:ci-guard"
   },
   "dependencies": {
     "@assistant-ui/react": "^0.15.17",
