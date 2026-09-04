@@ -9,7 +9,7 @@ import { candidateFingerprint, createExperienceCandidate, LOCAL_CANDIDATES_KEY, 
 import { canMarketingAction } from "@/lib/product-session";
 import { snapshotFingerprint } from "@/lib/reconcile";
 import { readSyncRecord, syncMarketingProduct } from "@/lib/sync-store";
-import { buildTaskExecutionState, taskExecutionId, type TaskExecutionState } from "@/lib/task-execution";
+import { buildTaskExecutionState, mergeTaskExecutionEditableProjection, taskExecutionId, type TaskExecutionState } from "@/lib/task-execution";
 import { useAgentTaskResult } from "@/lib/use-agent-task-result";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
@@ -31,7 +31,10 @@ export function ArtifactWorkspace({ taskId, workspaceId, taskType, taskGoal, tit
   const [localCandidates, setLocalCandidates] = usePersistedState<LocalEvolutionCandidate[]>(LOCAL_CANDIDATES_KEY, []);
   const syncTimer = useRef<number | null>(null); const syncInFlight = useRef(false); const queuedExecution = useRef<TaskExecutionState | null>(null);
   const executionEntityKey = `task-execution:${taskId}`; const executionEntityId = taskExecutionId(taskId);
-  const currentExecution = buildTaskExecutionState({ taskId, workspaceId, artifactTitle, finalText, feedback, outcome, outcomeNote }); const executionRef = useRef<TaskExecutionState>(currentExecution); executionRef.current = currentExecution;
+  const initialExecution = buildTaskExecutionState({ taskId, workspaceId, artifactTitle, finalText, feedback, outcome, outcomeNote });
+  const executionRef = useRef<TaskExecutionState>(initialExecution);
+  const currentExecution = mergeTaskExecutionEditableProjection(executionRef.current, { artifactTitle, finalText, feedback, outcome, outcomeNote });
+  executionRef.current = currentExecution;
 
   useEffect(() => { if (agentDraft !== previousAgentDraft.current) { if (finalText === previousAgentDraft.current || finalText === initialFinal || finalText === aiDraft) setFinalText(agentDraft); previousAgentDraft.current = agentDraft; } }, [agentDraft, aiDraft, finalText, initialFinal, setFinalText]);
   useEffect(() => () => { if (syncTimer.current !== null) window.clearTimeout(syncTimer.current); }, []);
