@@ -48,7 +48,7 @@ function body(input: {
   payload: unknown;
 }) {
   return {
-    product: "awkn-marketing",
+    product: "awkn-marketing" as const,
     operation: input.operation,
     request_id: input.requestId,
     idempotency_key: input.idempotencyKey,
