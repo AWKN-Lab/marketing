@@ -6,7 +6,7 @@ export function isMarketingTaskStatus(value: unknown): value is MarketingTaskSta
   return typeof value === "string" && (MARKETING_TASK_STATUSES as readonly string[]).includes(value);
 }
 
-export type AppliedExperience = { lesson: string; source: string };
+export type AppliedExperience = { id?: string; lesson: string; source: string };
 
 export type MarketingTask = {
   id: string;
