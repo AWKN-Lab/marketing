@@ -10,6 +10,7 @@
 |---|---|
 | `PRD.md` | 产品定位、MVP、业务闭环、产品组件、Domain / Skill / Eval 产品定义 |
 | `ENGINEERING.md` | 工程边界、开发规则、Hard Gates、阶段规划、全局依赖 |
+| `DEVELOPMENT-PLAN.md` | P6–P7 开发顺序、工作包、Owner、依赖、Hard Gate、验收与收口 |
 | `FRONTEND.md` | 前端产品架构、组件复用与交互总方案 |
 
 ---
@@ -78,16 +79,18 @@ PRD
 
 ```text
 ENGINEERING
+→ DEVELOPMENT-PLAN
 → ARCHITECTURE
 → DOMAIN-DATA-MODEL
-→ 对应专项文档
+→ 专项工程文档
 → 当前 Baseline
 ```
 
 ## AWKN 联调
 
 ```text
-ENGINEERING
+DEVELOPMENT-PLAN
+→ ENGINEERING
 → ARCHITECTURE
 → AWKN-INTEGRATION
 → TESTING
@@ -118,11 +121,13 @@ P6 Real AWKN Integration        NEXT
 P7 Real Business Acceptance     PLANNED
 ```
 
+P6–P7 的具体执行状态统一维护在 `DEVELOPMENT-PLAN.md` 的执行看板中。
+
 ---
 
 # 7. 文档维护规则
 
-代码变更涉及以下内容时同步更新对应文档：
+代码变更涉及以下内容时同步更新工程文档：
 
 - ProductOperation
 - Domain schema
