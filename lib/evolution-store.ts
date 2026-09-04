@@ -148,7 +148,7 @@ export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandid
 }
 
 export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefined, candidate: LocalEvolutionCandidate): EvolutionReviewDecision | null {
-  if (!review) return null;
+  if (!review || !evolutionCandidateReadyForReview(candidate)) return null;
   const revision = candidateRevision(candidate);
   if (typeof review === "string") {
     return revision === 1 && isEvolutionReviewDecision(review) ? review : null;
@@ -167,6 +167,7 @@ export function matchReviewedExperience(input: {
   maxCounterexamples?: number;
 }): { experiences: AppliedExperience[]; counterexamples: LocalEvolutionCandidate[] } {
   const approved = input.candidates
+    .filter(evolutionCandidateReadyForReview)
     .filter((candidate) => candidate.sourceTaskType === input.taskType)
     .filter((candidate) => {
       const review = input.reviews[candidate.id];
