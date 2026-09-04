@@ -85,6 +85,7 @@ export function matchReviewedExperience(input: {
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, input.maxExperiences ?? 3)
     .map((candidate) => ({
+      id: candidate.id,
       lesson: candidate.lesson,
       source: `${candidate.source} · 已审核 · ${Math.round(candidate.confidence * 100)}%`,
     }));
