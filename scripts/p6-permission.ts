@@ -184,8 +184,28 @@ async function main() {
       workspaceId: "w-write",
       sourceTaskType: "strategy",
       polarity: "positive",
+      fingerprint: "fp-visible",
+      revision: 1,
+      evidence: {
+        ai_draft: "draft-visible",
+        user_final: "final-visible",
+        feedback_event_id: "feedback-event:t-visible:fp-visible",
+        outcome_event_id: "outcome-event:t-visible:fp-visible",
+        evidence_refs: [],
+      },
     };
-    const revoked = { ...base, id: "ev-revoked", taskId: "t-revoked", workspaceId: "w-revoked" };
+    const revoked: LocalEvolutionCandidate = {
+      ...base,
+      id: "ev-revoked",
+      taskId: "t-revoked",
+      workspaceId: "w-revoked",
+      fingerprint: "fp-revoked",
+      evidence: {
+        ...base.evidence!,
+        feedback_event_id: "feedback-event:t-revoked:fp-revoked",
+        outcome_event_id: "outcome-event:t-revoked:fp-revoked",
+      },
+    };
     const readable = filterReadableWorkspaceItems(session, [base, revoked], (item) => item.workspaceId ?? "");
     const matched = matchReviewedExperience({
       candidates: readable,
