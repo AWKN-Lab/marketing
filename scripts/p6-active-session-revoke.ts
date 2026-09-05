@@ -202,6 +202,7 @@ async function main() {
       projectedSession = null;
     });
 
+    assert.ok(projectedSession);
     assert.equal(canMarketingAction(projectedSession, "feedback.write", WORKSPACE_REVOKED, "write"), true);
     assert.equal(signalMarketingSessionRefreshForProductError("WORKSPACE_REVOKED", target), true);
     assert.equal(projectedSession, null);
@@ -209,6 +210,7 @@ async function main() {
 
     projectedSession = refreshedSession;
     revalidationCompleted = true;
+    assert.ok(projectedSession);
     assert.equal(revalidationCompleted, true);
     assert.equal(canMarketingAction(projectedSession, "feedback.write", WORKSPACE_REVOKED, "write"), false);
   }, { operation: "session.refresh", entityId: WORKSPACE_REVOKED });
