@@ -5,6 +5,7 @@ import { matchReviewedExperience, type LocalEvolutionCandidate } from "../lib/ev
 import type { LearningWatch } from "../lib/learning-store.ts";
 import {
   MARKETING_CAPABILITIES,
+  MARKETING_SESSION_INVALIDATE_EVENT,
   MARKETING_SESSION_REFRESH_EVENT,
   canMarketingAction,
   filterReadableWorkspaceItems,
@@ -165,26 +166,51 @@ async function main() {
     assert.equal(result.body.trace_id, "trace-w7-active-revoke-denied");
   }, { operation: "feedback.record", entityId: WORKSPACE_REVOKED, traceId: "trace-w7-active-revoke-denied" });
 
-  await runP6Case("authorization denial invalidates the browser session immediately", () => {
+  await runP6Case("authorization denial uses invalidation routing while routine refresh stays non-destructive", () => {
     assert.equal(shouldRefreshMarketingSessionForProductError("WORKSPACE_REVOKED"), true);
     assert.equal(shouldRefreshMarketingSessionForProductError("FORBIDDEN"), true);
     assert.equal(shouldRefreshMarketingSessionForProductError("AUTH_REQUIRED"), true);
     assert.equal(shouldRefreshMarketingSessionForProductError("RATE_LIMITED"), false);
 
-    const target = new EventTarget();
+    const routineTarget = new EventTarget();
     let refreshSignals = 0;
-    target.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { refreshSignals += 1; });
-    assert.equal(signalMarketingSessionRefresh(target), true);
+    let routineInvalidations = 0;
+    routineTarget.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { refreshSignals += 1; });
+    routineTarget.addEventListener(MARKETING_SESSION_INVALIDATE_EVENT, () => { routineInvalidations += 1; });
+    assert.equal(signalMarketingSessionRefresh(routineTarget), true);
     assert.equal(refreshSignals, 1);
+    assert.equal(routineInvalidations, 0);
 
     const routedTarget = new EventTarget();
-    let routedSignals = 0;
-    routedTarget.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { routedSignals += 1; });
+    let routedRefreshSignals = 0;
+    let invalidationSignals = 0;
+    routedTarget.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { routedRefreshSignals += 1; });
+    routedTarget.addEventListener(MARKETING_SESSION_INVALIDATE_EVENT, () => { invalidationSignals += 1; });
     assert.equal(signalMarketingSessionRefreshForProductError("WORKSPACE_REVOKED", routedTarget), true);
     assert.equal(signalMarketingSessionRefreshForProductError("FORBIDDEN", routedTarget), true);
     assert.equal(signalMarketingSessionRefreshForProductError("AUTH_REQUIRED", routedTarget), true);
     assert.equal(signalMarketingSessionRefreshForProductError("RATE_LIMITED", routedTarget), false);
-    assert.equal(routedSignals, 3);
+    assert.equal(invalidationSignals, 3);
+    assert.equal(routedRefreshSignals, 0);
+  }, { operation: "session.refresh", entityId: WORKSPACE_REVOKED });
+
+  await runP6Case("authorization invalidation suspends protected projection before revalidation completes", () => {
+    const target = new EventTarget();
+    let projectedSession = staleSession;
+    let revalidationCompleted = false;
+    target.addEventListener(MARKETING_SESSION_INVALIDATE_EVENT, () => {
+      projectedSession = null as unknown as typeof staleSession;
+    });
+
+    assert.equal(canMarketingAction(projectedSession, "feedback.write", WORKSPACE_REVOKED, "write"), true);
+    assert.equal(signalMarketingSessionRefreshForProductError("WORKSPACE_REVOKED", target), true);
+    assert.equal(projectedSession, null);
+    assert.equal(revalidationCompleted, false);
+
+    projectedSession = refreshedSession;
+    revalidationCompleted = true;
+    assert.equal(revalidationCompleted, true);
+    assert.equal(canMarketingAction(projectedSession, "feedback.write", WORKSPACE_REVOKED, "write"), false);
   }, { operation: "session.refresh", entityId: WORKSPACE_REVOKED });
 
   await runP6Case("refreshed session removes revoked visible projection", () => {
