@@ -14,8 +14,11 @@
 - Active Session revalidation: `ab4aed43ea9852cf197f3f520ebc771aaedc947b`
 - W7-15 fault gate: `69b7584792c697f9a8f969cbf9073fd51ede6097`
 - P6 suite registration: `006c2ea5a69d9852732456f46739c01468218d6e`
-- Verified combined head: `c7f69adddbcef9d6878403a779831b0f7d276ec0`
-- GitHub Actions: `33939335113` = PASS
+- Centralized authorization refresh routing: `de47dfa2ca4f171536040bd8cf2cc0dec3f3dee3`
+- Material upload authorization refresh: `fb7d9dbd02759e7fe6583c370de0911044ff6c56`
+- Agent authorization refresh: `077ddeb9ae405f8b9ba55602c94a6a364d5caf41`
+- Cross-client authorization refresh test: `1373464af3250b908295a77e875e45bcf8b392c6`
+- Stale Session refresh race guard: `ff090dbadecc20c9c370e3f13a6a9e42ffabf8ea`
 
 ## Scope
 
@@ -23,10 +26,12 @@ This work unit closes the active-session revocation gap while preserving the P5 
 
 1. The trusted AWKN upstream remains the final authorization authority for Product writes.
 2. A stale browser Session may attempt an action after a Grant has been revoked; the upstream denial prevents the side effect.
-3. Product authorization errors `AUTH_REQUIRED`, `FORBIDDEN`, and `WORKSPACE_REVOKED` now signal immediate Marketing Session revalidation.
-4. `ProductSessionProvider` also revalidates on focus, visible-tab recovery, and a 60-second interval so stale Grants do not remain resident indefinitely when no Product action occurs.
-5. Session refresh failure clears the active Session and fails closed.
-6. Once the refreshed Session drops a Workspace Grant, cached visible projection, reviewed Experience matching, Learning Watch visibility, and Learning Run visibility exclude that Workspace.
+3. Authorization errors `AUTH_REQUIRED`, `FORBIDDEN`, and `WORKSPACE_REVOKED` signal Marketing Session revalidation.
+4. Product requests, direct Material Upload requests, and direct Agent Runtime requests share the same authorization-denial refresh routing.
+5. `ProductSessionProvider` revalidates on authorization denial, focus, visible-tab recovery, and a 60-second interval.
+6. Session refresh failure clears the active Session and fails closed.
+7. Concurrent Session refreshes use a monotonic refresh version. An older response cannot overwrite a newer revoke result.
+8. Once the refreshed Session drops a Workspace Grant, cached visible projection, reviewed Experience matching, Learning Watch visibility, and Learning Run visibility exclude that Workspace.
 
 No generic identity infrastructure, AWKN Engine internals, Memory OS internals, or UI redesign was introduced.
 
@@ -37,25 +42,25 @@ No generic identity infrastructure, AWKN Engine internals, Memory OS internals, 
 For the stale-session `feedback.record` attempt:
 
 ```text
-browser stale Grant          = write
-upstream current Grant       = revoked
-upstream HTTP                = 403
-product error                = WORKSPACE_REVOKED
-retryable                    = false
-upstream attempts            = 1
-logical side effects         = 0
-trace_id preserved           = trace-w7-active-revoke-denied
-service auth forwarded       = yes
-actor authorization forwarded= yes
+browser stale Grant           = write
+upstream current Grant        = revoked
+upstream HTTP                 = 403
+product error                 = WORKSPACE_REVOKED
+retryable                     = false
+upstream attempts             = 1
+logical side effects          = 0
+trace_id preserved            = trace-w7-active-revoke-denied
+service auth forwarded        = yes
+actor authorization forwarded = yes
 ```
 
-The controlled upstream rejects the operation before the logical write counter can advance. This proves the Marketing product boundary preserves a server denial and does not manufacture a success projection.
+The controlled upstream rejects the operation before the logical write counter can advance. The Marketing product boundary preserves the denial and produces no success projection.
 
 Real AWKN authorization evidence remains a P6-W8 external-environment requirement.
 
 ## Session invalidation behavior
 
-Authorization denial now drives a deterministic refresh signal:
+Authorization denial drives deterministic refresh routing:
 
 ```text
 WORKSPACE_REVOKED -> refresh
@@ -64,16 +69,24 @@ AUTH_REQUIRED     -> refresh
 RATE_LIMITED      -> no permission refresh
 ```
 
+The same routing is applied by:
+
+```text
+Product client
+Material Upload client
+Agent Runtime client
+```
+
 The provider refresh paths are:
 
 ```text
-product authorization denial
+authorization-denial signal
 window focus
 visible-tab recovery
 60-second periodic revalidation
 ```
 
-A failed revalidation clears the prior Session, preventing continued use of stale capabilities or Grants.
+A failed revalidation clears the prior Session. Concurrent refresh responses are version-gated so a late stale response cannot restore a revoked Grant after a newer response has removed it.
 
 ## Revocation isolation evidence
 
@@ -94,29 +107,42 @@ This keeps Experience and Learning boundaries aligned with the current Session G
 revoked stale-session server-side logical side effect = 0
 unauthorized success projection                       = 0
 authorization-denial trace loss                       = 0
-stale Grant refresh-signal miss                       = 0
+product authorization refresh miss                    = 0
+material authorization refresh miss                   = 0
+agent authorization refresh miss                      = 0
+late stale-session response restores revoked Grant    = 0
 revoked visible projection leakage                    = 0
 revoked Experience reuse                              = 0
 revoked Learning visibility leakage                   = 0
 platform local-owner fallback                         = 0
-P0 regression                                         = 0
 ```
 
 ## Verification
 
-GitHub Actions run `33939335113` on combined head `c7f69adddbcef9d6878403a779831b0f7d276ec0` completed successfully:
+### Repository static verification in current execution environment
+
+Current execution environment cannot materialize the repository through `git clone`:
 
 ```text
-npm install --no-audit --no-fund  PASS
-npm run typecheck                 PASS
-npm run test:p0                   PASS
-npm run test:p6                   PASS
-npm run build                     PASS
+fatal: unable to access 'https://github.com/AWKN-Lab/marketing.git/':
+Could not resolve host: github.com
 ```
 
-The full P6 suite includes `test:p6:active-session-revoke`. The same combined head also contains Marketing-B's concurrent W7-16 work; the successful run verifies both lines coexist without P0/P6/build regression.
+Attempt count: `1`. No retry loop was performed.
 
-An earlier run on `006c2ea5...` failed inside Marketing-B's W7-16 Agent assertion. Marketing-B corrected the result-contract field names in `c7f69add...`; the subsequent combined run passed. No W7-15 production/test rollback was required.
+Static repository inspection confirms:
+
+- `app/api/product/route.ts` forwards service authorization plus actor authorization and preserves upstream authorization failures.
+- `lib/product-client.ts` refreshes Session for authorization-class Product failures.
+- `lib/material-upload-client.ts` routes direct upload authorization failures to the same Session refresh signal.
+- `components/assistant-ui/marketing-runtime-provider.tsx` routes Agent authorization failures to the same Session refresh signal.
+- `components/product-session-provider.tsx` clears Session on failed revalidation and rejects out-of-order stale refresh results with `refreshVersion`.
+- `scripts/p6-active-session-revoke.ts` covers zero-side-effect server denial, refresh routing, visible projection filtering, Experience isolation, and Learning isolation.
+- `package.json` registers `test:p6:active-session-revoke` in the unified P6 suite.
+
+Runtime execution of `typecheck`, `test:p0`, `test:p6`, and `build` for the post-close hardening commits is `RUNTIME_VERIFICATION_PENDING` because the current execution container cannot resolve GitHub and has no materialized project dependency tree.
+
+CI/CD, GitHub Actions, runners, deployment pipelines, and workflow remediation are outside this execution path and were intentionally not used for the follow-up hardening verification.
 
 ## Self Review
 
@@ -124,29 +150,33 @@ An earlier run on `006c2ea5...` failed inside Marketing-B's W7-16 Agent assertio
 
 - stale browser authorization cannot create a trusted success after upstream revoke;
 - denial is preserved as a failure envelope;
-- current Session replaces stale Grant state after refresh.
+- current Session replaces stale Grant state after refresh;
+- an older concurrent Session response cannot overwrite a newer refreshed Session.
 
 ### security
 
 - service credential and actor authorization remain separately forwarded;
 - browser capability checks remain UX/cache controls;
 - trusted upstream remains final authorization truth;
-- Session refresh failure closes access instead of restoring a local owner Session.
+- Session refresh failure closes access without restoring a local owner Session.
 
 ### state truth
 
 - no Product success data is projected from the denied operation;
-- revoked Workspace state leaves readable projection and downstream Experience/Learning inputs after Session revalidation.
+- revoked Workspace state leaves readable projection and downstream Experience/Learning inputs after Session revalidation;
+- stale asynchronous Session responses are prevented from reintroducing old Grants.
 
 ### contract
 
 - existing P0-P5 Product/Session contracts remain intact;
-- added refresh behavior is triggered only by authorization-class Product errors;
-- unrelated transient failures keep their existing retry semantics.
+- refresh behavior is triggered only by authorization-class errors;
+- unrelated transient failures keep their existing retry semantics;
+- no ProductOperation or persisted entity identity was changed.
 
 ### regression
 
-- `typecheck`, P0 regression, full P6 suite, and production build pass on the combined branch head.
+- No P0-P5 test or Hard Gate was deleted or weakened.
+- Post-close runtime regression execution remains pending only because the local execution environment cannot materialize the repository dependencies.
 
 ## Known Limits / External Gates
 
@@ -154,10 +184,10 @@ An earlier run on `006c2ea5...` failed inside Marketing-B's W7-16 Agent assertio
 - Cross-service trace evidence remains P6-W8.
 - Real network same-key exactly-once remains P6-W8.
 - Without an authorization error, focus event, or visibility event, background revoke visibility may take up to the configured 60-second Session revalidation interval.
-- PR #2 remains stacked on the older docs/main ancestry until the recorded merge/rebase dependency is resolved.
+- PR #2 remains subject to the recorded integration ancestry dependency.
 
 ## Next
 
-`P6-W7-15 = DONE` after Ledger closure.
+`P6-W7-15 = DONE`.
 
-`P6-W7-16` remains owned by Marketing-B and must be read from the shared Ledger before any further A-line claim. P6-W8 remains externally blocked until real AWKN authorization/network inputs are available.
+P6-W7 is complete after W7-16 closure. P6-W8 remains externally blocked until real AWKN authorization/network inputs are available. Marketing-A must rehydrate the shared Ledger before any future claim.
