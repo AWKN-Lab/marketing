@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { validateMaterialProductResponse } from "../lib/material-contract.ts";
 import { normalizeProductResponseContract } from "../lib/product-contract.ts";
 import { assertP6FaultMatrixRecord } from "./p6-failure-support.ts";
 import { runP6Case } from "./p6-test-support.ts";
@@ -90,6 +91,51 @@ async function main() {
     assert.equal(errorCode(response), "VALIDATION_ERROR");
     assert.equal(response.trace_id, "trace-w7-09-read-missing-entity");
   }, { operation: "workspace.get", entityId: WORKSPACE_ID, traceId: "trace-w7-09-read-missing-entity" });
+
+  await runP6Case("W7-09 material parse read rejects missing or invalid parse state", () => {
+    for (const status of [undefined, "teleporting"]) {
+      const base = normalizeProductResponseContract("material.parse.get", {
+        ok: true,
+        data: {
+          entity_id: MATERIAL_ID,
+          revision: 3,
+          updated_at: NOW,
+          ...(typeof status === "undefined" ? {} : { parse_status: status }),
+        },
+        trace_id: "trace-w7-09-material-state",
+      }, {
+        expectedEntityId: MATERIAL_ID,
+        httpStatus: 200,
+      });
+      assert.equal(base.ok, true);
+      const response = validateMaterialProductResponse("material.parse.get", base);
+      assert.equal(response.ok, false);
+      assert.equal(response.error?.code, "VALIDATION_ERROR");
+      assert.equal(response.error?.retryable, false);
+      assert.equal(response.trace_id, "trace-w7-09-material-state");
+      assert.equal("data" in response, false);
+    }
+  }, { operation: "material.parse.get", entityId: MATERIAL_ID, traceId: "trace-w7-09-material-state" });
+
+  await runP6Case("W7-09 material parse read accepts canonical and supported upstream states", () => {
+    for (const status of ["queued", "processing", "ready", "completed", "failed"]) {
+      const base = normalizeProductResponseContract("material.parse.get", {
+        ok: true,
+        data: {
+          entity_id: MATERIAL_ID,
+          revision: 3,
+          updated_at: NOW,
+          parse_status: status,
+        },
+        trace_id: "trace-w7-09-material-state-valid",
+      }, {
+        expectedEntityId: MATERIAL_ID,
+        httpStatus: 200,
+      });
+      const response = validateMaterialProductResponse("material.parse.get", base);
+      assert.equal(response.ok, true);
+    }
+  }, { operation: "material.parse.get", entityId: MATERIAL_ID, traceId: "trace-w7-09-material-state-valid" });
 
   await runP6Case("W7-09 async Ack with invalid status is rejected", () => {
     const response = normalizeProductResponseContract("material.parse.retry", {
