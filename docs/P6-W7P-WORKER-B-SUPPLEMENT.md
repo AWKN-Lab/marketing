@@ -18,6 +18,9 @@
 - Marketing-B Store lifecycle assertions: `d54168228755e1a4e581060d21db35dc7d033109`
 - Marketing-B UI retry-start fix: `dcf1fee23da546ed59f87f57dbb498d338f0a656`
 - Marketing-B UI retry-start regression guard: `bd662a5079e24c7041e4f2ef0e4b5876858cbf6c`
+- Independent Reviewer cross-attempt output isolation fix: `7041f257ba69fb699c150be1a18845494297a2e0`
+- Independent Reviewer regression guard: `a6effb3292db4a73cea0ae9c72f2322e1c46e901`
+- Rehydrate head for this verification: `0a03f83c7fd680304dbd58856539d2f4fe8e4939`
 
 ## Finding 1 — Store cross-attempt lifecycle truth
 
@@ -116,6 +119,31 @@ Learning response Contract
 
 `lib/learning-run-client.ts` 仍以 `learningRunRetryIdempotencyKey(runId, attempt)` 派生稳定 retry key；`lib/learning-contract.ts` 继续校验 run identity、attempt 与同一 key 契约。
 
+## Finding 3 — Reviewer cross-attempt output isolation
+
+Independent Reviewer 继续检查 `mergeLearningRun()`，确认新 attempt 虽已重置生命周期字段，仍可能继承旧 attempt 的输出字段：
+
+```text
+signals = next.signals.length ? next.signals : previous.signals
+traceId = next.traceId ?? previous.traceId
+```
+
+当 attempt 2 刚进入 `running`、`signals=[]` 且没有新的 trace 时，attempt 1 的 Signal 与 trace 会进入 attempt 2 投影。
+
+Reviewer corrective `7041f257...` 将两项改为 attempt-aware：
+
+```text
+newer attempt
+→ signals 只来自 next attempt
+→ traceId 只来自 next attempt
+→ empty / absent 保持 empty / undefined
+
+same attempt
+→ 保留增量 merge 语义
+```
+
+回归守卫 `a6effb32...` 从一个包含 stale Signal / trace 的 failed attempt 1 出发，验证 attempt 2 不继承旧输出。
+
 ## Test hardening
 
 `scripts/p6-dependency-unavailable-learning.ts` 当前覆盖：
@@ -129,6 +157,8 @@ normalize fallback resolves to current attempt start
 projected.startedAt === attempt-2 startedAt
 projected.finishedAt === undefined
 projected.error === undefined
+newer attempt cannot inherit prior signals
+newer attempt cannot inherit prior trace
 ```
 
 故障矩阵收口语义保持：
@@ -139,7 +169,9 @@ learning-retry-keeps-run-id-attempt-status-and-lifecycle-truth
 
 ## Current-environment verification
 
-当前执行环境的一次 clone 尝试仍失败：
+本轮重新 REHYDRATE 后确认目标分支 HEAD=`0a03f83c7fd680304dbd58856539d2f4fe8e4939`。`a6effb32...` 到当前 HEAD 只新增 `docs/AUTOMATION_TASK_LEDGER.md`，Reviewer 的 Store 与测试 blob 没有后续代码漂移。
+
+当前执行环境再次只进行一次 clone 尝试，仍失败：
 
 ```text
 fatal: unable to access 'https://github.com/AWKN-Lab/marketing.git/'
@@ -158,21 +190,39 @@ npm run build
 
 CI/CD、GitHub Actions、Runner 与部署按执行规则全部跳过。
 
-已完成当前环境可执行的 focused TypeScript 验证：
+本轮针对 Reviewer 最新 `7041f257...` 纠正重新执行 focused TypeScript 5.8.3 编译与行为验证，代码语义与当前 `mergeLearningRun()` 保持一致。覆盖：
 
 ```text
-tsc --strict --target ES2022 --module commonjs focused.ts
-node focused.js
-```
+attempt 1 failed with stale Signal + trace
+→ attempt 2 running with signals=[] / trace undefined
+→ stale Signal cleared
+→ stale trace cleared
+→ attempt-2 startedAt authoritative
+→ attempt-1 finishedAt/error cleared
 
-focused 场景模拟：attempt 1 已 failed；retry 上游 payload 不提供 `started_at`；attempt 2 使用当前 retry fallback 后进入 merge。
+same attempt incremental update with empty signals / trace
+→ current-attempt signals retained
+→ current-attempt trace retained
+
+older attempt arrives after attempt 2
+→ rejected
+
+newer completed attempt with its own signals / trace
+→ new attempt outputs authoritative
+```
 
 结果：
 
 ```text
+FOCUSED_W7P_ATTEMPT_ISOLATION_PASS
+```
+
+此前 focused 场景继续有效：
+
+```text
 PASS attempt advances to 2
 PASS status becomes running
-PASS new trace is authoritative
+PASS new trace is authoritative when supplied
 PASS startedAt uses attempt-2 fallback
 PASS stale finishedAt is cleared
 PASS stale error is cleared
@@ -185,7 +235,8 @@ PASS older attempt cannot overwrite attempt 2
 components/learning-watch.tsx contains retryStartedAt
 components/learning-watch.tsx uses startedAt: retryStartedAt
 components/learning-watch.tsx no longer contains startedAt: latestRun.startedAt
-P6 unified test script includes test:p6:dependency-unavailable-learning
+lib/learning-run-store.ts uses attempt-aware signals / trace merge
+P6 Learning retry regression guard contains cross-attempt Signal / trace assertions
 ```
 
 ## Hard Gate assessment
@@ -201,6 +252,9 @@ new attempt stale startedAt leakage in Store = 0
 new attempt stale startedAt leakage from UI retry fallback = 0
 new attempt stale finishedAt leakage = 0
 new attempt stale error leakage = 0
+new attempt stale Signal leakage = 0
+new attempt stale trace leakage = 0
+same-attempt incremental Signal/trace regression = 0
 ```
 
 待授权运行环境补齐：
@@ -217,7 +271,7 @@ build / smoke
 ```text
 error = Could not resolve host: github.com
 reproduction = git clone --branch feature/p6-real-awkn-integration --single-branch https://github.com/AWKN-Lab/marketing.git
-attempts = 1 in current run; no retry loop
+attempts = 1 in this revalidation run; no retry loop
 evidence = repository not materialized locally; GitHub connector remains available for source inspection/write
 suspected_root_cause = execution container DNS/network isolation
 unblock_condition = local repository becomes available with dependencies, or container gains GitHub DNS/network access
