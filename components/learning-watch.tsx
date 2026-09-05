@@ -78,6 +78,7 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
     setRunning(true);
     setMessage(`正在重试学习运行 ${latestRun.runId}…`);
     const currentAttempt = Number.isSafeInteger(latestRun.attempt) && latestRun.attempt > 0 ? latestRun.attempt : 1;
+    const retryStartedAt = new Date().toISOString();
     const result = await retryLearningRun({
       workspaceId,
       watchId: existing.id,
@@ -91,7 +92,7 @@ export function LearningWatchPanel({ workspaceId, workspaceName }: { workspaceId
       setRunning(false);
       return;
     }
-    const run = normalizeLearningRun({ data: result.data, workspaceId, watchId: existing.id, traceId: result.trace_id, startedAt: latestRun.startedAt });
+    const run = normalizeLearningRun({ data: result.data, workspaceId, watchId: existing.id, traceId: result.trace_id, startedAt: retryStartedAt });
     if (!run || run.runId !== latestRun.runId || run.attempt <= currentAttempt) {
       setMessage("重试接口没有返回同一逻辑 run_id 与递增 attempt，未覆盖原失败记录。");
       setRunning(false);
