@@ -13,6 +13,8 @@ export type LocalMaterial = {
   platformStatus?: MaterialParseState;
   platformTraceId?: string;
   platformRevision?: number;
+  platformUpdatedAt?: string;
+  platformRunId?: string;
   platformError?: string;
   evidence?: MaterialEvidence[];
 };

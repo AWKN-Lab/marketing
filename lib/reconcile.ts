@@ -1,4 +1,4 @@
-import type { MarketingProductResponse } from "@/lib/product-contract";
+import type { MarketingProductResponse, ProductErrorCode } from "@/lib/product-contract";
 
 export type EntityReadData<T> = {
   entity_id: string;
@@ -16,6 +16,12 @@ export type ReconcileAssessment = {
   baselineFingerprint?: string;
   baselineRevision?: number;
   platformRevision: number;
+};
+
+export type ReconcileResolutionPolicy = {
+  canAcceptPlatform: boolean;
+  canKeepLocalAndWrite: boolean;
+  errorCode: ProductErrorCode | null;
 };
 
 function canonicalize(value: unknown): unknown {
@@ -48,6 +54,16 @@ export function validateEntityReadResponse<T extends { id: string }>(response: M
     return { ok: false, error: { code: "ENTITY_READ_IDENTITY_MISMATCH", message: `平台读回实体与产品 ID ${expectedEntityId} 不一致。` }, trace_id: response.trace_id };
   }
   return response;
+}
+
+export function reconcileResolutionPolicy(assessment: ReconcileAssessment | null): ReconcileResolutionPolicy {
+  if (!assessment || assessment.state === "clean") {
+    return { canAcceptPlatform: false, canKeepLocalAndWrite: false, errorCode: null };
+  }
+  if (assessment.state === "stale-platform") {
+    return { canAcceptPlatform: false, canKeepLocalAndWrite: false, errorCode: "INVALID_REVISION" };
+  }
+  return { canAcceptPlatform: true, canKeepLocalAndWrite: true, errorCode: null };
 }
 
 export function reconcileSnapshots(input: {

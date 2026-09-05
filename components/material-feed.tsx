@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { materialFeedIdempotencyKey } from "@/lib/material-contract";
 import {
   isLocalTextFile,
   kindFromMaterialName,
@@ -46,6 +47,8 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
       platformStatus: result.state,
       platformTraceId: result.traceId,
       platformRevision: result.revision,
+      platformUpdatedAt: result.updatedAt,
+      platformRunId: result.runId,
       platformError: result.error?.message,
     }));
   }
@@ -56,7 +59,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
       operation: "material.feed",
       workspaceId,
       expectedEntityId: material.id,
-      idempotencyKey: `material.feed:${material.id}`,
+      idempotencyKey: materialFeedIdempotencyKey(material.id),
       payload: {
         entity_id: material.id,
         material_id: material.id,
@@ -75,7 +78,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
 
   async function uploadBinary(file: File, materialId: string) {
     const response = await uploadMaterialFile({ workspaceId, materialId, file });
-    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+    applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
   }
 
   async function refreshParse(materialId: string, announce = true) {
@@ -84,7 +87,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
     if (announce) setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在刷新解析状态…" } : material));
     try {
       const response = await refreshMaterialParse({ workspaceId, materialId });
-      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
     } finally {
       refreshing.current.delete(materialId);
     }
@@ -93,10 +96,11 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
   async function retryParse(materialId: string) {
     if (refreshing.current.has(materialId)) return;
     refreshing.current.add(materialId);
+    const baseRevision = added.find((material) => material.id === materialId)?.platformRevision;
     setAdded((current) => current.map((material) => material.id === materialId ? { ...material, status: "正在重新提交解析…", platformStatus: "queued", platformError: undefined } : material));
     try {
-      const response = await retryMaterialParse({ workspaceId, materialId });
-      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId));
+      const response = await retryMaterialParse({ workspaceId, materialId, baseRevision });
+      applyPlatformResult(materialId, normalizeMaterialUploadAck(response, materialId, { strict: true }));
     } finally {
       refreshing.current.delete(materialId);
     }
@@ -195,7 +199,7 @@ export function MaterialFeed({ workspaceId, initialMaterials = [] }: { workspace
       {mode === "text" && <div className="inline-feed"><textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="粘贴会议记录、聊天记录或历史方案片段…"/><button className="button primary" onClick={() => void addText()}>加入</button></div>}
       {message && <p className="muted small">{message}</p>}
       {!materials.length && <div className="dropzone" onClick={() => fileInput.current?.click()}><strong>先喂第一批资料</strong><span>TXT / MD / CSV / JSON 本地读取并同步；PDF / PPT / DOC / XLS 上传 AWKN 后解析</span></div>}
-      {materials.map((material) => <div className="material-row" key={material.id}><div><strong>{material.title}</strong><p className="muted small">{material.kind} · {material.source} · {material.parseMode}{material.platformTraceId ? ` · trace ${material.platformTraceId}` : ""}</p></div><div className="row gap-sm"><span className={material.parseMode === "local_text" || material.parseMode === "platform_parsed" ? "status-ok" : "muted small"}>{material.status}</span>{!material.id.startsWith("demo-") && (material.platformStatus === "queued" || material.platformStatus === "parsing") && <button className="button ghost" onClick={() => void refreshParse(material.id)}>刷新解析</button>}{!material.id.startsWith("demo-") && material.platformStatus === "failed" && <button className="button ghost" onClick={() => void retryParse(material.id)}>重试解析</button>}</div></div>)}
+      {materials.map((material) => <div className="material-row" key={material.id}><div><strong>{material.title}</strong><p className="muted small">{material.kind} · {material.source} · {material.parseMode}{material.platformTraceId ? ` · trace ${material.platformTraceId}` : ""}{material.platformRunId ? ` · run ${material.platformRunId}` : ""}</p></div><div className="row gap-sm"><span className={material.parseMode === "local_text" || material.parseMode === "platform_parsed" ? "status-ok" : "muted small"}>{material.status}</span>{!material.id.startsWith("demo-") && (material.platformStatus === "queued" || material.platformStatus === "parsing") && <button className="button ghost" onClick={() => void refreshParse(material.id)}>刷新解析</button>}{!material.id.startsWith("demo-") && material.platformStatus === "failed" && <button className="button ghost" onClick={() => void retryParse(material.id)}>重试解析</button>}</div></div>)}
     </div>
   );
 }

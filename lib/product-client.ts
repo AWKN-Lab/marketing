@@ -1,6 +1,7 @@
 "use client";
 
 import type { MarketingProductRequest, MarketingProductResponse, ProductOperation } from "@/lib/product-contract";
+import { signalMarketingSessionRefreshForProductError } from "@/lib/product-session";
 
 function requestId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -26,7 +27,10 @@ export async function callMarketingProduct<TData = unknown, TPayload = unknown>(
   try {
     const response = await fetch("/api/product", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(request) });
     const payload = (await response.json().catch(() => null)) as MarketingProductResponse<TData> | null;
-    if (payload) return payload;
+    if (payload) {
+      if (!payload.ok) signalMarketingSessionRefreshForProductError(payload.error?.code);
+      return payload;
+    }
     return { ok: false, error: { code: "INVALID_PRODUCT_RESPONSE", message: "产品接口返回了无效响应。", retryable: true } };
   } catch {
     return { ok: false, error: { code: "PRODUCT_API_UNAVAILABLE", message: "暂时无法连接产品接口。", retryable: true } };
