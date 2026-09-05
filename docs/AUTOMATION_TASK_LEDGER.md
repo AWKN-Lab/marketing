@@ -24,7 +24,7 @@
 | P6-W7-09 malformed JSON | DONE | Marketing-A | `docs/P6-W7I-MALFORMED-JSON-BASELINE.md` | Baseline recorded |
 | P6-W7-10 malformed success payload | DONE | Marketing-B | `docs/P6-W7J-MALFORMED-SUCCESS-BASELINE.md` | Baseline recorded |
 | P6-W7-11 missing entity ack | DONE | Marketing-B | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` green; W7-12 excluded |
-| P6-W7-12 identity mismatch | READY | UNCLAIMED | - | Keep separate from W7-11 |
+| P6-W7-12 identity mismatch | CLAIMED | Marketing-B | claimed `2026-09-05T09:31+08:00` | Identity consistency only; keep W7-13+ untouched |
 | P6-W7-13 duplicate submit | READY | UNCLAIMED | - | Depends on prior failure hardening semantics |
 | P6-W7-14 duplicate retry | READY | UNCLAIMED | - | Keep logical action / idempotency stable |
 | P6-W7-15 permission revoked during active session | READY | UNCLAIMED | - | Permission Hard Gate |
