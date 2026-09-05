@@ -26,7 +26,7 @@
 | P6-W7-11 | missing entity ack | Product Contract | P0 | DONE | Marketing-B | W7-10 | - | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` PASS | `73dede8a0b068c16db506adadfe69783c32bc927` | 2026-09-05T09:26+08:00 |
 | P6-W7-12 | identity mismatch | Product Contract | P0 | DONE | Marketing-B | W7-11 | - | `docs/P6-W7L-IDENTITY-MISMATCH-BASELINE.md` | CI `33936523667` PASS | `2b43746fc57736108f4869fe108188a10cb88c1e` | 2026-09-05T09:35+08:00 |
 | P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | DONE | Marketing-A | W7-12 | - | `docs/P6-W7M-DUPLICATE-SUBMIT-BASELINE.md` | CI `33936601312` PASS | `729b61f08a5f29e165fac866c56b710e748b3063` | 2026-09-05T09:36+08:00 |
-| P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | READY | UNCLAIMED | W7-13 DONE | - | - | PENDING | - | 2026-09-05T09:36+08:00 |
+| P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | CLAIMED | Marketing-B | W7-13 DONE | - | claimed `2026-09-05T09:37+08:00` | PENDING | PENDING | 2026-09-05T09:37+08:00 |
 | P6-W7-15 | permission revoked during active session | Permission / Session | P0 | READY | UNCLAIMED | P5 permission baseline | - | Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | - | 2026-09-05T09:36+08:00 |
 | P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | READY | UNCLAIMED | W7F/G/H adapter semantics | - | - | PENDING | - | 2026-09-05T09:36+08:00 |
 | P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T09:36+08:00 |
