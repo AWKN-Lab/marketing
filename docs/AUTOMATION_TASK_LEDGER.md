@@ -10,10 +10,10 @@
 
 ## Current verified baseline
 
-- Latest component baseline: `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md`
-- Baseline commit: `9d1ec1b3cf656f678161440ecc38925fca6451c8`
-- Verified implementation commit: `73dede8a0b068c16db506adadfe69783c32bc927`
-- Verification run: GitHub Actions `33935147667` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
+- Latest component baseline: `docs/P6-W7L-IDENTITY-MISMATCH-BASELINE.md`
+- Baseline commit: `ea7e3598644d7bd7f00db37b76f2cd9de96f297f`
+- Verified implementation commit: `2b43746fc57736108f4869fe108188a10cb88c1e`
+- Verification run: GitHub Actions `33936523667` = PASS on descendant `c61d83676e451697b6f86c6934c19342221928de` (`typecheck`, `test:p0`, `test:p6`, `build`)
 - P6-W7 status: `IN_PROGRESS`
 - P7: `PLANNED`
 
@@ -24,7 +24,7 @@
 | P6-W7-09 | malformed JSON | Product Adapter / Contract | P0 | DONE | Marketing-A | W7H | - | `docs/P6-W7I-MALFORMED-JSON-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:34+08:00 |
 | P6-W7-10 | malformed success payload | Product Contract / Material | P0 | DONE | Marketing-B | W7-09 | - | `docs/P6-W7J-MALFORMED-SUCCESS-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:38+08:00 |
 | P6-W7-11 | missing entity ack | Product Contract | P0 | DONE | Marketing-B | W7-10 | - | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` PASS | `73dede8a0b068c16db506adadfe69783c32bc927` | 2026-09-05T09:26+08:00 |
-| P6-W7-12 | identity mismatch | Product Contract | P0 | CLAIMED | Marketing-B | W7-11 | - | claimed `2026-09-05T09:31+08:00` | PENDING | `246c1b035a416c83b0b974e011c2b1f21f88f2a2` | 2026-09-05T09:31+08:00 |
+| P6-W7-12 | identity mismatch | Product Contract | P0 | DONE | Marketing-B | W7-11 | - | `docs/P6-W7L-IDENTITY-MISMATCH-BASELINE.md` | CI `33936523667` PASS | `2b43746fc57736108f4869fe108188a10cb88c1e` | 2026-09-05T09:35+08:00 |
 | P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | CLAIMED | Marketing-A | W7-09/10/11 semantics; W7-12 independent | - | claimed `2026-09-05T09:32+08:00` | PENDING | PENDING | 2026-09-05T09:32+08:00 |
 | P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | READY | UNCLAIMED | W7-13 | - | - | PENDING | - | 2026-09-05T09:32+08:00 |
 | P6-W7-15 | permission revoked during active session | Permission / Session | P0 | READY | UNCLAIMED | P5 permission baseline | - | Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | - | 2026-09-05T09:32+08:00 |
