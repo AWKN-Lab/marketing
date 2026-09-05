@@ -72,6 +72,48 @@ async function main() {
     assert.equal(source.includes("startedAt: latestRun.startedAt"), false);
   }, { operation: "learning.run.retry", entityId: RUN_ID });
 
+  await runP6Case("W7-16 newer learning attempt cannot inherit prior signals or trace", () => {
+    const previous: LearningRun = {
+      runId: RUN_ID,
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      status: "failed",
+      attempt: 1,
+      signals: [{
+        id: "signal-attempt-1",
+        workspaceId: WORKSPACE_ID,
+        watchId: WATCH_ID,
+        title: "stale signal",
+        summary: "partial output from failed attempt",
+        whyItMatters: "must not leak into retry attempt",
+        source: "attempt-1-source",
+        traceId: "trace-signal-attempt-1",
+      }],
+      traceId: "trace-learning-attempt-1",
+      startedAt: "2026-09-05T10:20:00.000Z",
+      finishedAt: "2026-09-05T10:21:00.000Z",
+      error: "temporary dependency failure",
+    };
+    const next: LearningRun = {
+      runId: RUN_ID,
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      status: "running",
+      attempt: 2,
+      signals: [],
+      startedAt: "2026-09-05T10:32:00.000Z",
+    };
+
+    const merged = mergeLearningRun(previous, next);
+    assert.equal(merged.attempt, 2);
+    assert.equal(merged.status, "running");
+    assert.deepEqual(merged.signals, []);
+    assert.equal(merged.traceId, undefined);
+    assert.equal(merged.startedAt, next.startedAt);
+    assert.equal(merged.finishedAt, undefined);
+    assert.equal(merged.error, undefined);
+  }, { operation: "learning.run.retry", entityId: RUN_ID });
+
   await runP6Case("W7-16 learning retry preserves attempt and state truth across temporary dependency outage", async () => {
     let attempts = 0;
     let logicalSideEffects = 0;
