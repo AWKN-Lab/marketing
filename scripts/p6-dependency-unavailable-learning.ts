@@ -135,6 +135,9 @@ async function main() {
       assert.equal(projected.attempt, RETRY_ATTEMPT);
       assert.equal(projected.status, "running");
       assert.equal(projected.traceId, "trace-w7-16-learning-recovered");
+      assert.equal(projected.startedAt, NOW);
+      assert.equal(projected.finishedAt, undefined);
+      assert.equal(projected.error, undefined);
     });
 
     assert.equal(attempts, 2);
@@ -151,7 +154,7 @@ async function main() {
       traceId: "trace-w7-16-learning-recovered",
       sideEffectCount: logicalSideEffects,
       finalRevision: 2,
-      finalConsistency: "learning-retry-keeps-run-id-attempt-and-status-truth",
+      finalConsistency: "learning-retry-keeps-run-id-attempt-status-and-lifecycle-truth",
     });
   }, { operation: "learning.run.retry", entityId: RUN_ID, traceId: "trace-w7-16-learning-recovered" });
 }
