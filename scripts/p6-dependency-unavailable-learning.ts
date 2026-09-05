@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { POST as productRoute } from "../app/api/product/route.ts";
 import {
   learningRunRetryIdempotencyKey,
@@ -64,6 +65,13 @@ function request(requestId: string) {
 }
 
 async function main() {
+  await runP6Case("W7-16 learning UI retry starts a fresh physical-attempt lifecycle", () => {
+    const source = readFileSync(new URL("../components/learning-watch.tsx", import.meta.url), "utf8");
+    assert.ok(source.includes("const retryStartedAt = new Date().toISOString();"));
+    assert.ok(source.includes("startedAt: retryStartedAt"));
+    assert.equal(source.includes("startedAt: latestRun.startedAt"), false);
+  }, { operation: "learning.run.retry", entityId: RUN_ID });
+
   await runP6Case("W7-16 learning retry preserves attempt and state truth across temporary dependency outage", async () => {
     let attempts = 0;
     let logicalSideEffects = 0;
@@ -100,7 +108,6 @@ async function main() {
           status: "running",
           attempt: RETRY_ATTEMPT,
           signals: [],
-          started_at: NOW,
         },
         trace_id: "trace-w7-16-learning-recovered",
       }), { status: 200, headers: { "content-type": "application/json" } });
