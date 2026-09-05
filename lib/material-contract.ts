@@ -1,4 +1,9 @@
-import type { MarketingProductRequest, ProductErrorCode } from "@/lib/product-contract";
+import type {
+  MarketingProductRequest,
+  MarketingProductResponse,
+  ProductErrorCode,
+  ProductOperation,
+} from "@/lib/product-contract";
 
 type MaterialContractViolation = {
   code: ProductErrorCode;
@@ -17,6 +22,31 @@ function text(value: unknown) {
 
 function validRevision(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function validMaterialParseStatus(value: unknown) {
+  const status = text(value).toLowerCase();
+  return [
+    "queued",
+    "waiting",
+    "pending",
+    "parsing",
+    "processing",
+    "extracting",
+    "indexing",
+    "running",
+    "in_progress",
+    "ready",
+    "completed",
+    "complete",
+    "done",
+    "parsed",
+    "success",
+    "succeeded",
+    "failed",
+    "error",
+    "rejected",
+  ].includes(status);
 }
 
 function payloadMaterialId(input: ProductRequestLike) {
@@ -51,6 +81,28 @@ export function expectedMaterialEntityId(input: ProductRequestLike) {
     return undefined;
   }
   return payloadMaterialId(input) || undefined;
+}
+
+export function validateMaterialProductResponse(
+  operation: ProductOperation,
+  response: MarketingProductResponse,
+): MarketingProductResponse {
+  if (!response.ok || operation !== "material.parse.get") return response;
+  const data = record(response.data);
+  if (!data) return response;
+
+  const status = data.parse_status ?? data.status;
+  if (validMaterialParseStatus(status)) return response;
+
+  return {
+    ok: false,
+    error: {
+      code: "VALIDATION_ERROR",
+      message: `material.parse.get 返回了无效 parse_status / status：${String(status ?? "MISSING")}`,
+      retryable: false,
+    },
+    trace_id: response.trace_id,
+  };
 }
 
 export function materialFeedIdempotencyKey(materialId: string) {
