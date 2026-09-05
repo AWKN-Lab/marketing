@@ -28,7 +28,7 @@
 | P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | DONE | Marketing-A | W7-12 | - | `docs/P6-W7M-DUPLICATE-SUBMIT-BASELINE.md` | CI `33936601312` PASS | `729b61f08a5f29e165fac866c56b710e748b3063` | 2026-09-05T09:36+08:00 |
 | P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | DONE | Marketing-B | W7-13 DONE | - | `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md` | CI `33937970221` PASS | `0dd2e57d8bc7d068a573e241316d95ba95609ae9` | 2026-09-05T10:05+08:00 |
 | P6-W7-15 | permission revoked during active session | Permission / Session | P0 | CLAIMED | Marketing-A | P5 permission baseline | - | Rehydrated latest head + Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | claim commit | 2026-09-05T10:25+08:00 |
-| P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | READY | UNCLAIMED | W7F/G/H adapter semantics | - | - | PENDING | - | 2026-09-05T09:36+08:00 |
+| P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | CLAIMED | Marketing-B | W7F/G/H adapter semantics | - | claimed `2026-09-05T10:27+08:00`; orthogonal to A permission/session files | PENDING | PENDING | 2026-09-05T10:27+08:00 |
 | P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T09:36+08:00 |
 | P7 | real business acceptance | Eval / Release | P0 | TODO | UNCLAIMED | P6 W8/W9 release gates | P6 not complete | 5 Workspace / 30 Task / Release Review | PENDING | - | 2026-09-05T09:36+08:00 |
 
