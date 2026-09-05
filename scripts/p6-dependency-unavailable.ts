@@ -267,8 +267,8 @@ async function main() {
       const retryBody = await retryResponse.json() as Record<string, unknown>;
       assert.equal(retryResponse.status, 200);
       assert.equal(retryBody.ok, true);
-      assert.equal((retryBody.data as Record<string, unknown>).task_id, TASK_ID);
-      assert.equal((retryBody.data as Record<string, unknown>).run_id, "run-w7-16-agent");
+      assert.equal((retryBody.data as Record<string, unknown>).taskId, TASK_ID);
+      assert.equal((retryBody.data as Record<string, unknown>).runId, "run-w7-16-agent");
       assert.equal(retryBody.trace_id, "trace-w7-16-agent-recovered");
     });
 
