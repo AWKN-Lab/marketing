@@ -196,10 +196,10 @@ async function main() {
 
   await runP6Case("authorization invalidation suspends protected projection before revalidation completes", () => {
     const target = new EventTarget();
-    let projectedSession = staleSession;
+    let projectedSession: typeof staleSession | null = staleSession;
     let revalidationCompleted = false;
     target.addEventListener(MARKETING_SESSION_INVALIDATE_EVENT, () => {
-      projectedSession = null as unknown as typeof staleSession;
+      projectedSession = null;
     });
 
     assert.equal(canMarketingAction(projectedSession, "feedback.write", WORKSPACE_REVOKED, "write"), true);
