@@ -19,6 +19,15 @@ export const SESSION_ERROR_CODES = [
   "INVALID_SESSION_RESPONSE",
 ] as const;
 
+export const MARKETING_SESSION_REFRESH_EVENT = "awkn-marketing:session-refresh";
+export const MARKETING_SESSION_REFRESH_INTERVAL_MS = 60_000;
+
+const SESSION_INVALIDATING_PRODUCT_ERRORS = new Set([
+  "AUTH_REQUIRED",
+  "FORBIDDEN",
+  "WORKSPACE_REVOKED",
+]);
+
 export type MarketingCapability = (typeof MARKETING_CAPABILITIES)[number];
 export type SessionErrorCode = (typeof SESSION_ERROR_CODES)[number];
 export type WorkspaceAccess = "read" | "write" | "admin";
@@ -81,6 +90,17 @@ export function sessionErrorCodeForStatus(status: number): SessionErrorCode {
   if (status === 401) return "AUTH_REQUIRED";
   if (status === 403) return "FORBIDDEN";
   return "SESSION_UNAVAILABLE";
+}
+
+export function shouldRefreshMarketingSessionForProductError(code: string | undefined) {
+  return Boolean(code && SESSION_INVALIDATING_PRODUCT_ERRORS.has(code));
+}
+
+export function signalMarketingSessionRefresh(target?: EventTarget | null) {
+  const resolvedTarget = target ?? (typeof window !== "undefined" ? window : null);
+  if (!resolvedTarget || typeof Event === "undefined") return false;
+  resolvedTarget.dispatchEvent(new Event(MARKETING_SESSION_REFRESH_EVENT));
+  return true;
 }
 
 export function normalizeMarketingSession(input: unknown): MarketingSession | null {
