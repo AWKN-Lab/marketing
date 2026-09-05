@@ -11,6 +11,7 @@ import {
   normalizeMarketingSession,
   shouldRefreshMarketingSessionForProductError,
   signalMarketingSessionRefresh,
+  signalMarketingSessionRefreshForProductError,
 } from "../lib/product-session.ts";
 import { runP6Case } from "./p6-test-support.ts";
 
@@ -175,6 +176,15 @@ async function main() {
     target.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { refreshSignals += 1; });
     assert.equal(signalMarketingSessionRefresh(target), true);
     assert.equal(refreshSignals, 1);
+
+    const routedTarget = new EventTarget();
+    let routedSignals = 0;
+    routedTarget.addEventListener(MARKETING_SESSION_REFRESH_EVENT, () => { routedSignals += 1; });
+    assert.equal(signalMarketingSessionRefreshForProductError("WORKSPACE_REVOKED", routedTarget), true);
+    assert.equal(signalMarketingSessionRefreshForProductError("FORBIDDEN", routedTarget), true);
+    assert.equal(signalMarketingSessionRefreshForProductError("AUTH_REQUIRED", routedTarget), true);
+    assert.equal(signalMarketingSessionRefreshForProductError("RATE_LIMITED", routedTarget), false);
+    assert.equal(routedSignals, 3);
   }, { operation: "session.refresh", entityId: WORKSPACE_REVOKED });
 
   await runP6Case("refreshed session removes revoked visible projection", () => {
