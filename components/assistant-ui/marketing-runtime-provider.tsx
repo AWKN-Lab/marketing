@@ -17,7 +17,10 @@ import {
 import { persistAgentTaskResult, projectMarketingAgentResult } from "@/lib/agent-result-store";
 import { buildAgentMaterialContext, localMaterialsKey, type LocalMaterial } from "@/lib/material-store";
 import { readPersistedValue } from "@/lib/persistence";
-import { canMarketingAction } from "@/lib/product-session";
+import {
+  canMarketingAction,
+  signalMarketingSessionRefreshForProductError,
+} from "@/lib/product-session";
 import type { MarketingTask } from "@/lib/types";
 
 function requestId() {
@@ -81,6 +84,7 @@ function createMarketingAdapter(context: {
         });
         const payload = await response.json().catch(() => null) as MarketingAgentRouteResponse | null;
         if (!payload || !payload.ok || !payload.data) {
+          signalMarketingSessionRefreshForProductError(payload?.error?.code);
           const code = payload?.error?.code ?? `HTTP_${response.status}`;
           const message = code === "UPSTREAM_UNAVAILABLE"
             ? "AWKN Agent Runtime 暂不可用。"
