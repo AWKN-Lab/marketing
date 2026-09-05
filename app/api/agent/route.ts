@@ -18,6 +18,14 @@ function errorResponse(code: string, message: string, status: number, retryable 
   return Response.json({ ok: false, error: { code, message, retryable }, trace_id: traceId }, { status });
 }
 
+function falseSuccessHttpError(status: number) {
+  if (status === 401) return { code: "AUTH_REQUIRED", retryable: false };
+  if (status === 403) return { code: "FORBIDDEN", retryable: false };
+  if (status === 429) return { code: "RATE_LIMITED", retryable: true };
+  if (status >= 500 && status <= 599) return { code: "UPSTREAM_UNAVAILABLE", retryable: true };
+  return { code: "RUN_FAILED", retryable: false };
+}
+
 export async function POST(request: Request) {
   const endpoint = process.env.AWKN_MARKETING_AGENT_URL;
   if (!endpoint) return errorResponse("UPSTREAM_UNAVAILABLE", "AWKN Agent Runtime 尚未配置。", 503, false);
@@ -67,6 +75,16 @@ export async function POST(request: Request) {
       appliedExperienceIds: input.appliedExperienceIds,
       fallbackTraceId,
     });
+    if (!upstream.ok && normalizedResult.ok) {
+      const failure = falseSuccessHttpError(upstream.status);
+      return errorResponse(
+        failure.code,
+        `AWKN Agent 返回 HTTP ${upstream.status}，拒绝接受成功结果。`,
+        upstream.status,
+        failure.retryable,
+        normalizedResult.trace_id ?? fallbackTraceId,
+      );
+    }
     if (!normalizedResult.ok) {
       const code = normalizedResult.error?.code ?? "RUN_FAILED";
       const status = upstream.status === 401 ? 401
