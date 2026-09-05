@@ -9,7 +9,7 @@
 ## Baseline
 
 - Starting baseline: `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md`
-- Claim commit: `872709624d06715f389291cf4cd13a456f14947a`
+- Claim commit: `872709624d06715f389291cf4cd8efb87c136e06`
 - Test implementation: `8b90b1f939266de913c2b4f08155c471f4add17a`
 - Unified P6 gate wiring: `1ab2b8f3ac8d167f29734643d179f4174b2d7d45`
 - Agent result assertion fix: `c7f69adddbcef9d6878403a779831b0f7d276ec0`
