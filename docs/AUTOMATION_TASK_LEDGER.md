@@ -12,7 +12,7 @@
 
 - Latest component baseline: `docs/P6-W7P-DEPENDENCY-UNAVAILABLE-BASELINE.md`
 - Latest Marketing-A baseline: `docs/P6-W7O-ACTIVE-SESSION-REVOKE-BASELINE.md`
-- W7P baseline commit: `581eb31e7c01ae0d8094aaba504af5411af3982c`
+- W7P baseline commit: `9800fc0233e25f070fd94b24b3ad9cf03164b299`
 - W7O baseline commit: `bea2af03a96589fd2b0ae66b0cb620fe56ac4879`
 - Verified combined head: `c7f69adddbcef9d6878403a779831b0f7d276ec0`
 - Verification run: GitHub Actions `33939335113` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
