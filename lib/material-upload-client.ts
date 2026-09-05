@@ -2,6 +2,7 @@
 
 import { materialParseRetryIdempotencyKey } from "@/lib/material-contract";
 import { callMarketingProduct } from "@/lib/product-client";
+import { signalMarketingSessionRefreshForProductError } from "@/lib/product-session";
 import type { MaterialUploadAck, MaterialUploadData } from "@/lib/material-upload";
 
 export async function uploadMaterialFile(input: { workspaceId: string; materialId: string; file: File }): Promise<MaterialUploadAck> {
@@ -12,7 +13,10 @@ export async function uploadMaterialFile(input: { workspaceId: string; materialI
   try {
     const response = await fetch("/api/material-upload", { method: "POST", body: form });
     const payload = (await response.json().catch(() => null)) as MaterialUploadAck | null;
-    if (payload) return payload;
+    if (payload) {
+      if (!payload.ok) signalMarketingSessionRefreshForProductError(payload.error?.code);
+      return payload;
+    }
     return { ok: false, error: { code: "INVALID_UPLOAD_RESPONSE", message: "资料上传接口返回了无效响应。", retryable: true } };
   } catch {
     return { ok: false, error: { code: "MATERIAL_UPLOAD_UNAVAILABLE", message: "暂时无法连接资料上传接口。", retryable: true } };
