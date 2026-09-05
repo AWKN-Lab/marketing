@@ -67,14 +67,15 @@ export function mergeLearningRun(previous: LearningRun, next: LearningRun): Lear
     if (stateRank(next.status) < stateRank(previous.status)) return previous;
     if (terminal(previous.status) && next.status !== previous.status) return previous;
   }
+  const advancesAttempt = nextAttempt > previousAttempt;
   return {
     ...previous,
     ...next,
     attempt: nextAttempt,
     signals: next.signals.length ? next.signals : previous.signals,
     traceId: next.traceId ?? previous.traceId,
-    startedAt: previous.startedAt || next.startedAt,
-    finishedAt: next.finishedAt ?? previous.finishedAt,
+    startedAt: advancesAttempt ? next.startedAt : previous.startedAt || next.startedAt,
+    finishedAt: advancesAttempt ? next.finishedAt : next.finishedAt ?? previous.finishedAt,
     error: next.error,
   };
 }
