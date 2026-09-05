@@ -103,6 +103,14 @@ export function signalMarketingSessionRefresh(target?: EventTarget | null) {
   return true;
 }
 
+export function signalMarketingSessionRefreshForProductError(
+  code: string | undefined,
+  target?: EventTarget | null,
+) {
+  if (!shouldRefreshMarketingSessionForProductError(code)) return false;
+  return signalMarketingSessionRefresh(target);
+}
+
 export function normalizeMarketingSession(input: unknown): MarketingSession | null {
   const root = record(input);
   if (!root) return null;
