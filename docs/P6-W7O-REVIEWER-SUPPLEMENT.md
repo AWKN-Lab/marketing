@@ -160,6 +160,33 @@ full repository runtime               = RUNTIME_VERIFICATION_PENDING
 P6-W7-15                               = VERIFYING
 ```
 
+## Marketing-A focused current-head rerun — 2026-09-05
+
+The current container provides Node `v22.16.0` and TypeScript `5.8.3`. Marketing-A rebuilt the focused W7O contract harness from the current `lib/product-session.ts` blob and executed strict TypeScript compilation plus emitted JavaScript behavior checks.
+
+The first harness compile referenced `@types/node`, which is unavailable in the container. That failure was isolated to the test harness dependency and did not involve repository production code. The harness was reduced to DOM/ES TypeScript plus an internal assertion helper, then compiled and executed successfully without fetching packages.
+
+Result:
+
+```text
+FOCUSED_W7O_TYPESCRIPT_PASS_CURRENT_HEAD
+```
+
+Verified behaviors:
+
+```text
+stale write Grant permits action before trusted denial
+refreshed no-Grant Session blocks the revoked Workspace action
+AUTH_REQUIRED invalidates Session
+FORBIDDEN invalidates Session
+WORKSPACE_REVOKED invalidates Session
+RATE_LIMITED does not invalidate Session
+routine refresh emits refresh only
+authorization failure emits invalidation only
+```
+
+This focused run strengthens current-environment evidence but does not replace the repository-level gates. `typecheck`, `test:p0`, full `test:p6`, and `build` remain `RUNTIME_VERIFICATION_PENDING` until a complete worktree and dependency tree are available locally.
+
 ## External evidence still required
 
 - Real AWKN final authorization remains P6-W8.
