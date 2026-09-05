@@ -17,20 +17,20 @@
 - P6-W7 status: `IN_PROGRESS`
 - P7: `PLANNED`
 
-## Worker coordination
+## Atomic Work Units
 
-| Work Unit | Status | Owner | Claim / evidence | Notes |
-|---|---|---|---|---|
-| P6-W7-09 malformed JSON | DONE | Marketing-A | `docs/P6-W7I-MALFORMED-JSON-BASELINE.md` | Baseline recorded |
-| P6-W7-10 malformed success payload | DONE | Marketing-B | `docs/P6-W7J-MALFORMED-SUCCESS-BASELINE.md` | Baseline recorded |
-| P6-W7-11 missing entity ack | DONE | Marketing-B | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` green; W7-12 excluded |
-| P6-W7-12 identity mismatch | CLAIMED | Marketing-B | claimed `2026-09-05T09:31+08:00` | Identity consistency only; keep W7-13+ untouched |
-| P6-W7-13 duplicate submit | READY | UNCLAIMED | - | Depends on prior failure hardening semantics |
-| P6-W7-14 duplicate retry | READY | UNCLAIMED | - | Keep logical action / idempotency stable |
-| P6-W7-15 permission revoked during active session | READY | UNCLAIMED | - | Permission Hard Gate |
-| P6-W7-16 dependency temporarily unavailable | READY | UNCLAIMED | - | Stable retry/error path |
-| P6-W8 real AWKN E2E | BLOCKED | UNCLAIMED | - | Requires real AWKN endpoints / credentials / authorization / network evidence |
-| P7 real business acceptance | TODO | UNCLAIMED | - | Starts after P6 Release/Integration gates |
+| task_id | component | module | priority | status | owner | dependency | blocker | evidence | test_result | commit | updated_at |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| P6-W7-09 | malformed JSON | Product Adapter / Contract | P0 | DONE | Marketing-A | W7H | - | `docs/P6-W7I-MALFORMED-JSON-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:34+08:00 |
+| P6-W7-10 | malformed success payload | Product Contract / Material | P0 | DONE | Marketing-B | W7-09 | - | `docs/P6-W7J-MALFORMED-SUCCESS-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:38+08:00 |
+| P6-W7-11 | missing entity ack | Product Contract | P0 | DONE | Marketing-B | W7-10 | - | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` PASS | `73dede8a0b068c16db506adadfe69783c32bc927` | 2026-09-05T09:26+08:00 |
+| P6-W7-12 | identity mismatch | Product Contract | P0 | CLAIMED | Marketing-B | W7-11 | - | claimed `2026-09-05T09:31+08:00` | PENDING | `246c1b035a416c83b0b974e011c2b1f21f88f2a2` | 2026-09-05T09:31+08:00 |
+| P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | CLAIMED | Marketing-A | W7-09/10/11 semantics; W7-12 independent | - | claimed `2026-09-05T09:32+08:00` | PENDING | PENDING | 2026-09-05T09:32+08:00 |
+| P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | READY | UNCLAIMED | W7-13 | - | - | PENDING | - | 2026-09-05T09:32+08:00 |
+| P6-W7-15 | permission revoked during active session | Permission / Session | P0 | READY | UNCLAIMED | P5 permission baseline | - | Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | - | 2026-09-05T09:32+08:00 |
+| P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | READY | UNCLAIMED | W7F/G/H adapter semantics | - | - | PENDING | - | 2026-09-05T09:32+08:00 |
+| P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T09:32+08:00 |
+| P7 | real business acceptance | Eval / Release | P0 | TODO | UNCLAIMED | P6 W8/W9 release gates | P6 not complete | 5 Workspace / 30 Task / Release Review | PENDING | - | 2026-09-05T09:32+08:00 |
 
 ## Blocker ledger
 
@@ -45,7 +45,9 @@
 - Real AWKN server-side exactly-once evidence remains for P6-W8.
 - Real Session / Product / Material credentials and final authorization remain for P6-W8.
 - Cross-service trace evidence remains for P6-W8.
-- Agent logical action context-version risk and UI retry same-action semantics remain reviewer concerns; W7-11 did not touch Agent core files.
+- Agent logical action context-version risk and UI retry same-action semantics remain reviewer concerns.
+- Material lower-revision projection guard and `PLATFORM_NOT_CONFIGURED` taxonomy consistency remain release-review concerns unless later baselines close them.
+- W7-15 active-session revoke requires explicit server-side side-effect denial evidence plus visible projection / Experience / Learning isolation.
 - PR #2 remains stacked on docs PR #1 / old main baseline and must be retargeted or rebased before formal merge.
 
 ## Coordination rules
