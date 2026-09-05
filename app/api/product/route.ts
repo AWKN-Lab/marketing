@@ -8,11 +8,7 @@ import {
 } from "@/lib/product-contract";
 import { upstreamIdentityHeaders } from "@/lib/server-upstream-auth";
 import { expectedWorkspaceEntityId, validateWorkspaceProductRequest } from "@/lib/workspace-contract";
-import {
-  expectedMaterialEntityId,
-  validateMaterialProductRequest,
-  validateMaterialProductResponse,
-} from "@/lib/material-contract";
+import { expectedMaterialEntityId, validateMaterialProductRequest } from "@/lib/material-contract";
 import { expectedTaskEntityId, validateTaskProductRequest, validateTaskProductResponse } from "@/lib/task-contract";
 import {
   expectedTaskExecutionEntityId,
@@ -175,7 +171,6 @@ export async function POST(request: Request) {
     });
     normalized = normalizeServerFailure(response, normalized);
     normalized = normalizeRateLimitFailure(response, normalized);
-    normalized = validateMaterialProductResponse(body.operation, normalized);
     normalized = validateTaskProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateTaskExecutionProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateLearningProductResponse(body.operation, normalized, body);
