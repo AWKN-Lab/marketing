@@ -112,6 +112,54 @@ Full repository `typecheck`, `test:p0`, `test:p6`, and `build` remain `RUNTIME_V
 
 `P6-W7-15` therefore remains `VERIFYING`.
 
+## Marketing-A no-drift revalidation — 2026-09-05
+
+Latest REHYDRATE observed:
+
+```text
+branch head = c26e2fc6a07a36b85771556989d0e136a80627db
+local worktree = unavailable in current container
+git status = unavailable because no repository checkout is materialized
+```
+
+The existing local-clone DNS blocker is already recorded in the shared Ledger, so this run did not repeat the failed clone attempt.
+
+Repository comparison:
+
+```text
+base = b26326dfbca0b2f14d5946f0a0c1fbc8e8275892
+head = c26e2fc6a07a36b85771556989d0e136a80627db
+ahead = 5 commits
+```
+
+Files changed after Marketing-A's focused W7O evidence:
+
+```text
+components/learning-watch.tsx
+docs/AUTOMATION_TASK_LEDGER.md
+docs/P6-W7P-WORKER-B-SUPPLEMENT.md
+scripts/p6-dependency-unavailable-learning.ts
+```
+
+No W7O permission/session implementation or test file changed. Current W7O source identities remain:
+
+```text
+lib/product-session.ts                    blob 345e858efe475275bba185ba22b01647be643d1d
+components/product-session-provider.tsx   blob 78662df51ef186757bc0a410fa624b9a4d80c26b
+scripts/p6-active-session-revoke.ts       blob ad43e8c778a92f6126d6897885333a4099fd4615
+```
+
+Static reinspection confirms the active contract still preserves immediate invalidation, stale-response rejection, server-side authorization truth, revoked projection isolation, and the existing W7-15 controlled fault gate. Since no W7O code drift occurred, no additional production modification is justified in this work unit.
+
+Current result remains:
+
+```text
+W7O code drift since focused evidence = 0
+focused contract evidence             = still applicable
+full repository runtime               = RUNTIME_VERIFICATION_PENDING
+P6-W7-15                               = VERIFYING
+```
+
 ## External evidence still required
 
 - Real AWKN final authorization remains P6-W8.
