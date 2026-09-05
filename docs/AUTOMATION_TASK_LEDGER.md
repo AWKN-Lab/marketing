@@ -10,10 +10,10 @@
 
 ## Current verified baseline
 
-- Latest component baseline: `docs/P6-W7M-DUPLICATE-SUBMIT-BASELINE.md`
-- Baseline commit: `aa985932eeed921458968d7f5e52fa11c226180b`
-- Verified implementation commit: `729b61f08a5f29e165fac866c56b710e748b3063`
-- Verification run: GitHub Actions `33936601312` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
+- Latest component baseline: `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md`
+- Baseline commit: `3154f9bcfbf7d871d090ff2c01d1b0db7a7b9786`
+- Verified implementation commit: `0dd2e57d8bc7d068a573e241316d95ba95609ae9`
+- Verification run: GitHub Actions `33937970221` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
 - P6-W7 status: `IN_PROGRESS`
 - P7: `PLANNED`
 
@@ -26,7 +26,7 @@
 | P6-W7-11 | missing entity ack | Product Contract | P0 | DONE | Marketing-B | W7-10 | - | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | CI `33935147667` PASS | `73dede8a0b068c16db506adadfe69783c32bc927` | 2026-09-05T09:26+08:00 |
 | P6-W7-12 | identity mismatch | Product Contract | P0 | DONE | Marketing-B | W7-11 | - | `docs/P6-W7L-IDENTITY-MISMATCH-BASELINE.md` | CI `33936523667` PASS | `2b43746fc57736108f4869fe108188a10cb88c1e` | 2026-09-05T09:35+08:00 |
 | P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | DONE | Marketing-A | W7-12 | - | `docs/P6-W7M-DUPLICATE-SUBMIT-BASELINE.md` | CI `33936601312` PASS | `729b61f08a5f29e165fac866c56b710e748b3063` | 2026-09-05T09:36+08:00 |
-| P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | CLAIMED | Marketing-B | W7-13 DONE | - | claimed `2026-09-05T09:37+08:00` | PENDING | PENDING | 2026-09-05T09:37+08:00 |
+| P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | DONE | Marketing-B | W7-13 DONE | - | `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md` | CI `33937970221` PASS | `0dd2e57d8bc7d068a573e241316d95ba95609ae9` | 2026-09-05T10:05+08:00 |
 | P6-W7-15 | permission revoked during active session | Permission / Session | P0 | READY | UNCLAIMED | P5 permission baseline | - | Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | - | 2026-09-05T09:36+08:00 |
 | P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | READY | UNCLAIMED | W7F/G/H adapter semantics | - | - | PENDING | - | 2026-09-05T09:36+08:00 |
 | P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T09:36+08:00 |
@@ -42,7 +42,7 @@
 
 ## Reviewer findings carried forward
 
-- Real AWKN server-side exactly-once evidence remains for P6-W8; W7-13 only proves stable-key product semantics with a controlled upstream receipt store.
+- Real AWKN server-side exactly-once evidence remains for P6-W8; W7-13/W7-14 prove stable-key product semantics with controlled upstream receipt stores only.
 - Real Session / Product / Material credentials and final authorization remain for P6-W8.
 - Cross-service trace evidence remains for P6-W8.
 - Agent logical action context-version risk and UI retry same-action semantics remain reviewer concerns.
