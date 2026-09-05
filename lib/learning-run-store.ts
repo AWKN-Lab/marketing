@@ -76,7 +76,7 @@ export function mergeLearningRun(previous: LearningRun, next: LearningRun): Lear
     traceId: advancesAttempt ? next.traceId : next.traceId ?? previous.traceId,
     startedAt: advancesAttempt ? next.startedAt : previous.startedAt || next.startedAt,
     finishedAt: advancesAttempt ? next.finishedAt : next.finishedAt ?? previous.finishedAt,
-    error: next.error,
+    error: advancesAttempt || next.status !== "failed" ? next.error : next.error ?? previous.error,
   };
 }
 
