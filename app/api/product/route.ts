@@ -34,6 +34,13 @@ function traceFromHeaders(response: Response) {
   return response.headers.get("x-trace-id") ?? response.headers.get("trace-id") ?? undefined;
 }
 
+function retryAfterFromHeaders(response: Response) {
+  const value = response.headers.get("retry-after")?.trim();
+  if (!value || value.length > 128) return undefined;
+  if (/^\d{1,6}$/.test(value)) return value;
+  return Number.isFinite(Date.parse(value)) ? value : undefined;
+}
+
 function normalizeServerFailure(response: Response, normalized: MarketingProductResponse): MarketingProductResponse {
   if (response.status < 500 || response.status > 599) return normalized;
 
@@ -68,6 +75,21 @@ function normalizeServerFailure(response: Response, normalized: MarketingProduct
       retryable,
     },
     trace_id: traceId,
+  };
+}
+
+function normalizeRateLimitFailure(response: Response, normalized: MarketingProductResponse): MarketingProductResponse {
+  if (response.status !== 429) return normalized;
+  return {
+    ok: false,
+    error: {
+      code: "RATE_LIMITED",
+      message: normalized.ok
+        ? "AWKN 产品接口返回 HTTP 429，拒绝接受成功信封。"
+        : normalized.error?.message || "AWKN 产品接口触发限流。",
+      retryable: true,
+    },
+    trace_id: normalized.trace_id ?? traceFromHeaders(response),
   };
 }
 
@@ -148,12 +170,17 @@ export async function POST(request: Request) {
       httpStatus: response.status,
     });
     normalized = normalizeServerFailure(response, normalized);
+    normalized = normalizeRateLimitFailure(response, normalized);
     normalized = validateTaskProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateTaskExecutionProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateLearningProductResponse(body.operation, normalized, body);
     normalized = validateEvolutionProductResponse(body.operation, normalized, body);
     const status = normalized.ok ? response.status : response.ok ? 502 : response.status;
-    return NextResponse.json(normalized, { status });
+    const retryAfter = retryAfterFromHeaders(response);
+    return NextResponse.json(normalized, {
+      status,
+      headers: retryAfter ? { "retry-after": retryAfter } : undefined,
+    });
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "AbortError";
     return NextResponse.json<MarketingProductResponse>(
