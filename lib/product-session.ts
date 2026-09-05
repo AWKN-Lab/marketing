@@ -20,6 +20,7 @@ export const SESSION_ERROR_CODES = [
 ] as const;
 
 export const MARKETING_SESSION_REFRESH_EVENT = "awkn-marketing:session-refresh";
+export const MARKETING_SESSION_INVALIDATE_EVENT = "awkn-marketing:session-invalidate";
 export const MARKETING_SESSION_REFRESH_INTERVAL_MS = 60_000;
 
 const SESSION_INVALIDATING_PRODUCT_ERRORS = new Set([
@@ -96,11 +97,19 @@ export function shouldRefreshMarketingSessionForProductError(code: string | unde
   return Boolean(code && SESSION_INVALIDATING_PRODUCT_ERRORS.has(code));
 }
 
-export function signalMarketingSessionRefresh(target?: EventTarget | null) {
+function signalMarketingSessionEvent(eventName: string, target?: EventTarget | null) {
   const resolvedTarget = target ?? (typeof window !== "undefined" ? window : null);
   if (!resolvedTarget || typeof Event === "undefined") return false;
-  resolvedTarget.dispatchEvent(new Event(MARKETING_SESSION_REFRESH_EVENT));
+  resolvedTarget.dispatchEvent(new Event(eventName));
   return true;
+}
+
+export function signalMarketingSessionRefresh(target?: EventTarget | null) {
+  return signalMarketingSessionEvent(MARKETING_SESSION_REFRESH_EVENT, target);
+}
+
+export function signalMarketingSessionInvalidation(target?: EventTarget | null) {
+  return signalMarketingSessionEvent(MARKETING_SESSION_INVALIDATE_EVENT, target);
 }
 
 export function signalMarketingSessionRefreshForProductError(
@@ -108,7 +117,7 @@ export function signalMarketingSessionRefreshForProductError(
   target?: EventTarget | null,
 ) {
   if (!shouldRefreshMarketingSessionForProductError(code)) return false;
-  return signalMarketingSessionRefresh(target);
+  return signalMarketingSessionInvalidation(target);
 }
 
 export function normalizeMarketingSession(input: unknown): MarketingSession | null {
