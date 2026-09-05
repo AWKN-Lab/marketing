@@ -114,6 +114,48 @@ async function main() {
     assert.equal(merged.error, undefined);
   }, { operation: "learning.run.retry", entityId: RUN_ID });
 
+  await runP6Case("W7-16 same-attempt failed snapshot preserves existing failure evidence", () => {
+    const previous: LearningRun = {
+      runId: RUN_ID,
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      status: "failed",
+      attempt: 2,
+      signals: [{
+        id: "signal-attempt-2",
+        workspaceId: WORKSPACE_ID,
+        watchId: WATCH_ID,
+        title: "current attempt signal",
+        summary: "current attempt partial evidence",
+        whyItMatters: "must remain attached to this attempt",
+        source: "attempt-2-source",
+        traceId: "trace-signal-attempt-2",
+      }],
+      traceId: "trace-learning-attempt-2",
+      startedAt: "2026-09-05T10:32:00.000Z",
+      finishedAt: "2026-09-05T10:33:00.000Z",
+      error: "attempt-2 dependency failure",
+    };
+    const sparseSameAttempt: LearningRun = {
+      runId: RUN_ID,
+      workspaceId: WORKSPACE_ID,
+      watchId: WATCH_ID,
+      status: "failed",
+      attempt: 2,
+      signals: [],
+      startedAt: "2026-09-05T10:32:30.000Z",
+    };
+
+    const merged = mergeLearningRun(previous, sparseSameAttempt);
+    assert.equal(merged.attempt, 2);
+    assert.equal(merged.status, "failed");
+    assert.deepEqual(merged.signals, previous.signals);
+    assert.equal(merged.traceId, previous.traceId);
+    assert.equal(merged.startedAt, previous.startedAt);
+    assert.equal(merged.finishedAt, previous.finishedAt);
+    assert.equal(merged.error, previous.error);
+  }, { operation: "learning.run.retry", entityId: RUN_ID });
+
   await runP6Case("W7-16 learning retry preserves attempt and state truth across temporary dependency outage", async () => {
     let attempts = 0;
     let logicalSideEffects = 0;
