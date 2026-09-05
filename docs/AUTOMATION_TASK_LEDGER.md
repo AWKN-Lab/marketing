@@ -10,10 +10,10 @@
 
 ## Current verified baseline
 
-- Latest component baseline: `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md`
-- Baseline commit: `3154f9bcfbf7d871d090ff2c01d1b0db7a7b9786`
-- Verified implementation commit: `0dd2e57d8bc7d068a573e241316d95ba95609ae9`
-- Verification run: GitHub Actions `33937970221` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
+- Latest component baseline: `docs/P6-W7P-DEPENDENCY-UNAVAILABLE-BASELINE.md`
+- Baseline commit: `581eb31e7c01ae0d8094aaba504af5411af3982c`
+- Verified implementation commit: `c7f69adddbcef9d6878403a779831b0f7d276ec0`
+- Verification run: GitHub Actions `33939335113` = PASS (`typecheck`, `test:p0`, `test:p6`, `build`)
 - P6-W7 status: `IN_PROGRESS`
 - P7: `PLANNED`
 
@@ -27,10 +27,10 @@
 | P6-W7-12 | identity mismatch | Product Contract | P0 | DONE | Marketing-B | W7-11 | - | `docs/P6-W7L-IDENTITY-MISMATCH-BASELINE.md` | CI `33936523667` PASS | `2b43746fc57736108f4869fe108188a10cb88c1e` | 2026-09-05T09:35+08:00 |
 | P6-W7-13 | duplicate submit | Idempotency / Product Boundary | P0 | DONE | Marketing-A | W7-12 | - | `docs/P6-W7M-DUPLICATE-SUBMIT-BASELINE.md` | CI `33936601312` PASS | `729b61f08a5f29e165fac866c56b710e748b3063` | 2026-09-05T09:36+08:00 |
 | P6-W7-14 | duplicate retry | Idempotency / Retry | P0 | DONE | Marketing-B | W7-13 DONE | - | `docs/P6-W7N-DUPLICATE-RETRY-BASELINE.md` | CI `33937970221` PASS | `0dd2e57d8bc7d068a573e241316d95ba95609ae9` | 2026-09-05T10:05+08:00 |
-| P6-W7-15 | permission revoked during active session | Permission / Session | P0 | CLAIMED | Marketing-A | P5 permission baseline | - | Rehydrated latest head + Reviewer requires server-side denial + projection/Experience/Learning isolation | PENDING | claim commit | 2026-09-05T10:25+08:00 |
-| P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | CLAIMED | Marketing-B | W7F/G/H adapter semantics | - | claimed `2026-09-05T10:27+08:00`; orthogonal to A permission/session files | PENDING | PENDING | 2026-09-05T10:27+08:00 |
-| P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T09:36+08:00 |
-| P7 | real business acceptance | Eval / Release | P0 | TODO | UNCLAIMED | P6 W8/W9 release gates | P6 not complete | 5 Workspace / 30 Task / Release Review | PENDING | - | 2026-09-05T09:36+08:00 |
+| P6-W7-15 | permission revoked during active session | Permission / Session | P0 | CLAIMED | Marketing-A | P5 permission baseline | - | Shared CI `33939335113` already passes active-session revoke gate; A retains component closure ownership | PENDING_CLOSURE | claim / A commits | 2026-09-05T10:32+08:00 |
+| P6-W7-16 | dependency temporarily unavailable | Adapter / Retry | P1 | DONE | Marketing-B | W7F/G/H adapter semantics | - | `docs/P6-W7P-DEPENDENCY-UNAVAILABLE-BASELINE.md` | CI `33939335113` PASS | `c7f69adddbcef9d6878403a779831b0f7d276ec0` | 2026-09-05T10:33+08:00 |
+| P6-W8 | real AWKN E2E | Integration | P0 | BLOCKED | UNCLAIMED | W7 complete | real AWKN endpoints / credentials / authorization / network evidence | Reviewer requires authorization, cross-service trace, same-key network exactly-once | BLOCKED_EXTERNAL | - | 2026-09-05T10:33+08:00 |
+| P7 | real business acceptance | Eval / Release | P0 | TODO | UNCLAIMED | P6 W8/W9 release gates | P6 not complete | 5 Workspace / 30 Task / Release Review | PENDING | - | 2026-09-05T10:33+08:00 |
 
 ## Blocker ledger
 
@@ -42,12 +42,12 @@
 
 ## Reviewer findings carried forward
 
-- Real AWKN server-side exactly-once evidence remains for P6-W8; W7-13/W7-14 prove stable-key product semantics with controlled upstream receipt stores only.
+- Real AWKN server-side exactly-once evidence remains for P6-W8; controlled W7 retries prove product semantics but cannot replace real network evidence.
 - Real Session / Product / Material credentials and final authorization remain for P6-W8.
 - Cross-service trace evidence remains for P6-W8.
-- Agent logical action context-version risk and UI retry same-action semantics remain reviewer concerns.
+- Agent logical action context-version risk remains a release-review concern unless a later corrective baseline closes it.
 - Material lower-revision projection guard and `PLATFORM_NOT_CONFIGURED` taxonomy consistency remain release-review concerns unless later baselines close them.
-- W7-15 active-session revoke requires explicit server-side side-effect denial evidence plus visible projection / Experience / Learning isolation.
+- W7-15 active-session revoke tests are green in shared CI `33939335113`; Marketing-A still owns Baseline / ledger closure for that Atomic Work Unit.
 - PR #2 remains stacked on docs PR #1 / old main baseline and must be retargeted or rebased before formal merge.
 
 ## Coordination rules
