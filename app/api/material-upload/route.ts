@@ -20,6 +20,14 @@ function uploadRequestId(request: Request) {
   return request.headers.get("x-request-id") ?? crypto.randomUUID();
 }
 
+function falseSuccessUploadError(status: number) {
+  if (status === 401) return { code: "AUTH_REQUIRED", retryable: false };
+  if (status === 403) return { code: "FORBIDDEN", retryable: false };
+  if (status === 429) return { code: "RATE_LIMITED", retryable: true };
+  if (status >= 500 && status <= 599) return { code: "MATERIAL_UPLOAD_UPSTREAM_UNAVAILABLE", retryable: true };
+  return { code: "INVALID_UPLOAD_UPSTREAM_RESPONSE", retryable: false };
+}
+
 export async function POST(request: Request) {
   const endpoint = process.env.AWKN_MARKETING_MATERIAL_UPLOAD_URL;
   if (!endpoint) {
@@ -80,6 +88,22 @@ export async function POST(request: Request) {
       return NextResponse.json<MaterialUploadAck>(
         { ok: false, error: { code: "INVALID_UPLOAD_UPSTREAM_RESPONSE", message: "AWKN 资料接口返回了非 JSON 响应。" }, trace_id: fallbackTraceId },
         { status: 502 },
+      );
+    }
+
+    if (!upstream.ok && payload.ok) {
+      const failure = falseSuccessUploadError(upstream.status);
+      return NextResponse.json<MaterialUploadAck>(
+        {
+          ok: false,
+          error: {
+            code: failure.code,
+            message: `AWKN 资料接口返回 HTTP ${upstream.status}，拒绝接受成功上传结果。`,
+            retryable: failure.retryable,
+          },
+          trace_id: payload.trace_id ?? fallbackTraceId,
+        },
+        { status: upstream.status },
       );
     }
 
