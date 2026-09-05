@@ -34,6 +34,43 @@ function traceFromHeaders(response: Response) {
   return response.headers.get("x-trace-id") ?? response.headers.get("trace-id") ?? undefined;
 }
 
+function normalizeServerFailure(response: Response, normalized: MarketingProductResponse): MarketingProductResponse {
+  if (response.status < 500 || response.status > 599) return normalized;
+
+  const traceId = normalized.trace_id ?? traceFromHeaders(response);
+  if (normalized.ok) {
+    return {
+      ok: false,
+      error: {
+        code: "UPSTREAM_UNAVAILABLE",
+        message: `AWKN 产品接口返回 HTTP ${response.status}，拒绝接受成功信封。`,
+        retryable: true,
+      },
+      trace_id: traceId,
+    };
+  }
+
+  const currentCode = normalized.error?.code;
+  const code = !currentCode || currentCode === "UNKNOWN_UPSTREAM_ERROR"
+    ? "UPSTREAM_UNAVAILABLE"
+    : currentCode;
+  const retryable = typeof normalized.error?.retryable === "boolean"
+    ? normalized.error.retryable
+    : code === "UPSTREAM_UNAVAILABLE" || code === "UPSTREAM_TIMEOUT"
+      ? true
+      : undefined;
+
+  return {
+    ...normalized,
+    error: {
+      code,
+      message: normalized.error?.message || `AWKN 产品接口返回 HTTP ${response.status}。`,
+      retryable,
+    },
+    trace_id: traceId,
+  };
+}
+
 export async function POST(request: Request) {
   let body: Partial<MarketingProductRequest> & Record<string, unknown>;
   try {
@@ -110,6 +147,7 @@ export async function POST(request: Request) {
       fallbackTraceId: traceFromHeaders(response),
       httpStatus: response.status,
     });
+    normalized = normalizeServerFailure(response, normalized);
     normalized = validateTaskProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateTaskExecutionProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
     normalized = validateLearningProductResponse(body.operation, normalized, body);
