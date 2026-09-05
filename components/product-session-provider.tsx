@@ -17,19 +17,21 @@ export function ProductSessionProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     let cancelled = false;
+    let refreshVersion = 0;
     const load = async () => {
+      const version = ++refreshVersion;
       try {
         const response = await fetch("/api/session", { credentials: "include", cache: "no-store" });
         const payload = await response.json().catch(() => null);
         if (!response.ok) throw new Error(payload?.error ?? `SESSION_${response.status}`);
         const next = normalizeMarketingSession(payload);
         if (!next) throw new Error("INVALID_SESSION_RESPONSE");
-        if (cancelled) return;
+        if (cancelled || version !== refreshVersion) return;
         setActiveStorageScope(next);
         setError("");
         setSession(next);
       } catch (cause) {
-        if (!cancelled) {
+        if (!cancelled && version === refreshVersion) {
           setSession(null);
           setError(cause instanceof Error ? cause.message : "SESSION_UNAVAILABLE");
         }
@@ -48,6 +50,7 @@ export function ProductSessionProvider({ children }: { children: React.ReactNode
 
     return () => {
       cancelled = true;
+      refreshVersion += 1;
       window.removeEventListener(MARKETING_SESSION_REFRESH_EVENT, refresh);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refreshOnVisible);
