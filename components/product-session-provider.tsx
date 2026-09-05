@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import {
+  MARKETING_SESSION_INVALIDATE_EVENT,
   MARKETING_SESSION_REFRESH_EVENT,
   MARKETING_SESSION_REFRESH_INTERVAL_MS,
   normalizeMarketingSession,
@@ -38,12 +39,18 @@ export function ProductSessionProvider({ children }: { children: React.ReactNode
       }
     };
     const refresh = () => { void load(); };
+    const invalidateAndRefresh = () => {
+      setSession(null);
+      setError("");
+      void load();
+    };
     const refreshOnVisible = () => {
       if (document.visibilityState === "visible") void load();
     };
 
     void load();
     window.addEventListener(MARKETING_SESSION_REFRESH_EVENT, refresh);
+    window.addEventListener(MARKETING_SESSION_INVALIDATE_EVENT, invalidateAndRefresh);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refreshOnVisible);
     const timer = window.setInterval(refresh, MARKETING_SESSION_REFRESH_INTERVAL_MS);
@@ -52,6 +59,7 @@ export function ProductSessionProvider({ children }: { children: React.ReactNode
       cancelled = true;
       refreshVersion += 1;
       window.removeEventListener(MARKETING_SESSION_REFRESH_EVENT, refresh);
+      window.removeEventListener(MARKETING_SESSION_INVALIDATE_EVENT, invalidateAndRefresh);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refreshOnVisible);
       window.clearInterval(timer);
