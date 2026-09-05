@@ -23,7 +23,7 @@ ff090dbadecc20c9c370e3f13a6a9e42ffabf8ea  stale refresh response ordering guard
 7e82d5ee9d44891e75a4a04e29b8e2467f530c3b  separate authorization invalidation from routine refresh
 d9639ed60a0de7e7912e0e00d5bee4c19fe85672  route Product authorization failure through shared invalidation
 3f6425aea2f19b3539d4a948182b021bf7874a02  suspend stale Session before authorization revalidation
-2ca99a5cabfb680e72d2e90de6b3cdcf1ccf3d17  cover invalidation routing and in-flight projection suspension
+515f3faa4c87a652c2e3445c90a9375c1262c2d9  cover invalidation routing and type-safe in-flight projection suspension
 ```
 
 ## Corrected contract
