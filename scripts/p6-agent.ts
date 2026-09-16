@@ -5,8 +5,10 @@ import {
   appliedExperienceStableId,
   normalizeMarketingAgentInput,
   stableAgentLogicalActionId,
+  stableAgentMaterialContextFingerprint,
   type MarketingAgentInput,
 } from "../lib/agent-contract.ts";
+import { buildAgentMaterialContext, type LocalMaterial } from "../lib/material-store.ts";
 import { runP6Case } from "./p6-test-support.ts";
 
 const TASK_ID = "task-p6-agent";
@@ -16,7 +18,25 @@ const MESSAGES = [
   { role: "user", content: "基于当前 Workspace 资料给出下一步策略。" },
   { role: "assistant", content: "先核验资料与已确认经验。" },
 ];
-const LOGICAL_ACTION_ID = stableAgentLogicalActionId({ taskId: TASK_ID, messages: MESSAGES, appliedExperienceIds: [APPLIED_ID] });
+const MATERIALS: MarketingAgentInput["materials"] = [{
+  id: "material-1",
+  workspace_id: WORKSPACE_ID,
+  title: "客户资料",
+  kind: "MD",
+  source: "workspace",
+  status: "Ready",
+  parse_mode: "platform_parsed",
+  revision: 7,
+  updated_at: "2026-09-16T10:00:00.000Z",
+  content: "当前客户只关注可验证的业务结果。",
+}];
+const CONTEXT_FINGERPRINT = stableAgentMaterialContextFingerprint(MATERIALS);
+const LOGICAL_ACTION_ID = stableAgentLogicalActionId({
+  taskId: TASK_ID,
+  messages: MESSAGES,
+  appliedExperienceIds: [APPLIED_ID],
+  contextFingerprint: CONTEXT_FINGERPRINT,
+});
 
 type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -35,16 +55,7 @@ function input(requestId = "req-agent-1"): MarketingAgentInput {
     requestId,
     logicalActionId: LOGICAL_ACTION_ID,
     messages: MESSAGES,
-    materials: [{
-      id: "material-1",
-      workspace_id: WORKSPACE_ID,
-      title: "客户资料",
-      kind: "MD",
-      source: "workspace",
-      status: "Ready",
-      parse_mode: "local_text",
-      content: "当前客户只关注可验证的业务结果。",
-    }],
+    materials: MATERIALS.map((material) => ({ ...material })),
   };
 }
 
@@ -107,13 +118,54 @@ function successResponse(runId = "run-agent-1") {
 }
 
 async function main() {
-  await runP6Case("applied experience identity stays stable across agent requests", () => {
+  await runP6Case("applied experience and material context identities stay stable across agent retries", () => {
     assert.equal(appliedExperienceStableId({ id: APPLIED_ID, lesson: "已确认经验", source: "task-1" }), APPLIED_ID);
     const fallbackA = appliedExperienceStableId({ lesson: "旧经验", source: "legacy-task" });
     const fallbackB = appliedExperienceStableId({ lesson: "旧经验", source: "legacy-task" });
     assert.equal(fallbackA, fallbackB);
     assert.ok(fallbackA.startsWith("experience-"));
-    assert.equal(LOGICAL_ACTION_ID, stableAgentLogicalActionId({ taskId: TASK_ID, messages: MESSAGES, appliedExperienceIds: [APPLIED_ID] }));
+    assert.equal(CONTEXT_FINGERPRINT, stableAgentMaterialContextFingerprint(MATERIALS.map((material) => ({ ...material }))));
+    assert.equal(LOGICAL_ACTION_ID, stableAgentLogicalActionId({
+      taskId: TASK_ID,
+      messages: MESSAGES,
+      appliedExperienceIds: [APPLIED_ID],
+      contextFingerprint: CONTEXT_FINGERPRINT,
+    }));
+
+    const nextRevision = MATERIALS.map((material) => ({ ...material, revision: 8 }));
+    const nextContent = MATERIALS.map((material) => ({ ...material, content: `${material.content} 新增预算约束。` }));
+    const revisionAction = stableAgentLogicalActionId({
+      taskId: TASK_ID,
+      messages: MESSAGES,
+      appliedExperienceIds: [APPLIED_ID],
+      contextFingerprint: stableAgentMaterialContextFingerprint(nextRevision),
+    });
+    const contentAction = stableAgentLogicalActionId({
+      taskId: TASK_ID,
+      messages: MESSAGES,
+      appliedExperienceIds: [APPLIED_ID],
+      contextFingerprint: stableAgentMaterialContextFingerprint(nextContent),
+    });
+    assert.notEqual(revisionAction, LOGICAL_ACTION_ID);
+    assert.notEqual(contentAction, LOGICAL_ACTION_ID);
+  }, { operation: "task.run", entityId: TASK_ID });
+
+  await runP6Case("agent material projection carries platform revision into logical context", () => {
+    const material: LocalMaterial = {
+      id: "material-1",
+      title: "客户资料",
+      kind: "MD",
+      source: "workspace",
+      status: "Ready",
+      parseMode: "platform_parsed",
+      content: "当前客户只关注可验证的业务结果。",
+      createdAt: "2026-09-16T09:00:00.000Z",
+      platformRevision: 7,
+      platformUpdatedAt: "2026-09-16T10:00:00.000Z",
+    };
+    const projected = buildAgentMaterialContext([material])[0];
+    assert.equal(projected.revision, 7);
+    assert.equal(projected.updated_at, "2026-09-16T10:00:00.000Z");
   }, { operation: "task.run", entityId: TASK_ID });
 
   await runP6Case("agent input fails closed on revoked workspace context and unsupported side effects", () => {
@@ -136,7 +188,9 @@ async function main() {
     if (!unsupported.ok) assert.equal(unsupported.error.code, "UNSUPPORTED_OPERATION");
   }, { operation: "task.run", entityId: TASK_ID });
 
-  await runP6Case("task.run forwards full scope and projects traceable agent result", async () => {
+  await runP6Case("task.run canonicalizes context identity and projects traceable agent result", async () => {
+    const staleClientInput = input("req-agent-scope");
+    staleClientInput.logicalActionId = stableAgentLogicalActionId({ taskId: TASK_ID, messages: MESSAGES, appliedExperienceIds: [APPLIED_ID] });
     await withAgentUpstream(async (_upstream, init) => {
       const headers = new Headers(init?.headers);
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
@@ -152,12 +206,14 @@ async function main() {
       assert.equal(headers.get("x-awkn-user-authorization"), "Bearer actor-token");
       assert.equal(payload.tenantId, "tenant-p6");
       assert.equal(payload.actorId, "actor-p6");
+      assert.equal(payload.logicalActionId, LOGICAL_ACTION_ID);
       assert.deepEqual(payload.contextRefs, ["material-1"]);
       assert.deepEqual(payload.appliedExperienceIds, [APPLIED_ID]);
       assert.equal(((payload.materials as Array<Record<string, unknown>>)[0]).workspace_id, WORKSPACE_ID);
+      assert.equal(((payload.materials as Array<Record<string, unknown>>)[0]).revision, 7);
       return new Response(JSON.stringify(successResponse()), { status: 200, headers: { "content-type": "application/json" } });
     }, async () => {
-      const result = await routeJson(input("req-agent-scope"));
+      const result = await routeJson(staleClientInput);
       assert.equal(result.status, 200);
       assert.equal(result.body.ok, true);
       const data = result.body.data as Record<string, unknown>;
@@ -196,6 +252,23 @@ async function main() {
     });
     assert.equal(logicalSideEffects, 1);
     assert.equal(runByKey.size, 1);
+  }, { operation: "task.run", entityId: TASK_ID });
+
+  await runP6Case("changed material revision receives a new logical run identity", async () => {
+    const keys: string[] = [];
+    await withAgentUpstream(async (_upstream, init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      keys.push(String(body.idempotency_key ?? ""));
+      return new Response(JSON.stringify(successResponse(`run-${keys.length}`)), { status: 200, headers: { "content-type": "application/json" } });
+    }, async () => {
+      const first = input("req-agent-context-1");
+      const second = input("req-agent-context-2");
+      second.materials = second.materials.map((material) => ({ ...material, revision: 8 }));
+      await routeJson(first);
+      await routeJson(second);
+    });
+    assert.equal(keys.length, 2);
+    assert.notEqual(keys[0], keys[1]);
   }, { operation: "task.run", entityId: TASK_ID });
 
   await runP6Case("agent result blocks identity mismatch, missing run id and unsupported side effects", async () => {
