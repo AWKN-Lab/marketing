@@ -1,6 +1,6 @@
 # AWKN Marketing｜Eval 与验收工程文档
 
-> 文档版本：V1.0  
+> 文档版本：V1.1  
 > 上位文档：`docs/ENGINEERING.md`
 
 ---
@@ -208,13 +208,29 @@ Feedback = 采用 的 Task / 有 Feedback 的 Task
 
 ## Repeated Task Improvement
 
-同一 taskType 按时间比较：
+同一 `workspaceId + taskType` 的样本必须先形成确定性的时间序列，再计算改善值。
+
+排序规则：
+
+1. `taskSequence` 为首选顺序键，必须按数值升序排列。
+2. `taskSequence` 缺失时使用可解析的 `startedAt` 升序排列。
+3. 主顺序键相同时使用 `taskId` 字典序作为稳定 tie-break，保证重复计算结果一致。
+4. `taskSequence` 与 `startedAt` 都无法建立顺序时，该组样本标记 `UNKNOWN_ORDER` 并排除在 improvement 计数之外；禁止按数组当前顺序猜测时间先后。
+
+计算公式：
 
 ```text
 latest edit count - first edit count
 ```
 
 负值代表修改量下降。
+
+验收必须覆盖：
+
+- 输入数组为 newest-first 时仍得到正确方向；
+- 输入数组为 oldest-first 时结果一致；
+- 相同时间值通过 `taskId` 得到稳定顺序；
+- 缺少有效顺序信息时返回 `UNKNOWN_ORDER`，不得计入 improved / deteriorated。
 
 ---
 
