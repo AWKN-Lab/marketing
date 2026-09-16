@@ -1,6 +1,7 @@
 export type EvalTaskSample = {
   taskId: string;
   taskType: string;
+  taskSequence: number;
   feedback: string | null;
   outcome: string | null;
   editCount: number;
@@ -17,6 +18,16 @@ export function countLineDiff(aiDraft: string, userFinal: string) {
   return removed + added;
 }
 
+function orderRepeatedSamples(group: EvalTaskSample[]) {
+  const ordered = [...group].sort((a, b) => a.taskSequence - b.taskSequence || a.taskId.localeCompare(b.taskId));
+  for (let index = 1; index < ordered.length; index += 1) {
+    if (ordered[index - 1].taskSequence === ordered[index].taskSequence) {
+      throw new Error(`Duplicate taskSequence for taskType ${ordered[index].taskType}: ${ordered[index].taskSequence}`);
+    }
+  }
+  return ordered;
+}
+
 export function buildP0Metrics(samples: EvalTaskSample[]) {
   const feedbackSamples = samples.filter((item) => item.feedback);
   const outcomeSamples = samples.filter((item) => item.outcome);
@@ -24,6 +35,9 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
 
   const byType = new Map<string, EvalTaskSample[]>();
   for (const sample of feedbackSamples) {
+    if (!Number.isFinite(sample.taskSequence)) {
+      throw new Error(`Invalid taskSequence for task ${sample.taskId}`);
+    }
     const group = byType.get(sample.taskType) ?? [];
     group.push(sample);
     byType.set(sample.taskType, group);
@@ -31,13 +45,18 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
 
   const repeated = [...byType.entries()]
     .filter(([, group]) => group.length >= 2)
-    .map(([taskType, group]) => ({
-      taskType,
-      samples: group.length,
-      firstEditCount: group[0].editCount,
-      latestEditCount: group[group.length - 1].editCount,
-      editDelta: group[group.length - 1].editCount - group[0].editCount,
-    }));
+    .map(([taskType, group]) => {
+      const ordered = orderRepeatedSamples(group);
+      const first = ordered[0];
+      const latest = ordered[ordered.length - 1];
+      return {
+        taskType,
+        samples: ordered.length,
+        firstEditCount: first.editCount,
+        latestEditCount: latest.editCount,
+        editDelta: latest.editCount - first.editCount,
+      };
+    });
 
   return {
     totalTasks: samples.length,
