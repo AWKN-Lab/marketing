@@ -1,34 +1,205 @@
 import { NextResponse } from "next/server";
-import { isProductOperation, type MarketingProductRequest, type MarketingProductResponse } from "@/lib/product-contract";
+import {
+  isProductOperation,
+  normalizeProductResponseContract,
+  validateProductRequestContract,
+  type MarketingProductRequest,
+  type MarketingProductResponse,
+} from "@/lib/product-contract";
 import { upstreamIdentityHeaders } from "@/lib/server-upstream-auth";
+import { expectedWorkspaceEntityId, validateWorkspaceProductRequest } from "@/lib/workspace-contract";
+import {
+  expectedMaterialEntityId,
+  validateMaterialProductRequest,
+  validateMaterialProductResponse,
+} from "@/lib/material-contract";
+import { expectedTaskEntityId, validateTaskProductRequest, validateTaskProductResponse } from "@/lib/task-contract";
+import {
+  expectedTaskExecutionEntityId,
+  validateTaskExecutionProductRequest,
+  validateTaskExecutionProductResponse,
+} from "@/lib/task-execution-contract";
+import { expectedFeedbackEntityId, validateFeedbackProductRequest } from "@/lib/feedback-contract";
+import { expectedOutcomeEntityId, validateOutcomeProductRequest } from "@/lib/outcome-contract";
+import {
+  expectedLearningEntityId,
+  validateLearningProductRequest,
+  validateLearningProductResponse,
+} from "@/lib/learning-contract";
+import {
+  expectedEvolutionEntityId,
+  validateEvolutionProductRequest,
+  validateEvolutionProductResponse,
+} from "@/lib/evolution-contract";
 
 const TIMEOUT_MS = 20_000;
 
-export async function POST(request: Request) {
-  let body: Partial<MarketingProductRequest>;
-  try { body = (await request.json()) as Partial<MarketingProductRequest>; }
-  catch { return NextResponse.json<MarketingProductResponse>({ ok: false, error: { code: "INVALID_JSON", message: "请求体必须是 JSON。" } }, { status: 400 }); }
+function traceFromHeaders(response: Response) {
+  return response.headers.get("x-trace-id") ?? response.headers.get("trace-id") ?? undefined;
+}
 
-  if (body.product !== "awkn-marketing" || !isProductOperation(body.operation) || !body.request_id) {
-    return NextResponse.json<MarketingProductResponse>({ ok: false, error: { code: "INVALID_PRODUCT_REQUEST", message: "缺少 product / operation / request_id，或 operation 不受支持。" } }, { status: 400 });
+function retryAfterFromHeaders(response: Response) {
+  const value = response.headers.get("retry-after")?.trim();
+  if (!value || value.length > 128) return undefined;
+  if (/^\d{1,6}$/.test(value)) return value;
+  return Number.isFinite(Date.parse(value)) ? value : undefined;
+}
+
+function normalizeServerFailure(response: Response, normalized: MarketingProductResponse): MarketingProductResponse {
+  if (response.status < 500 || response.status > 599) return normalized;
+
+  const traceId = normalized.trace_id ?? traceFromHeaders(response);
+  if (normalized.ok) {
+    return {
+      ok: false,
+      error: {
+        code: "UPSTREAM_UNAVAILABLE",
+        message: `AWKN 产品接口返回 HTTP ${response.status}，拒绝接受成功信封。`,
+        retryable: true,
+      },
+      trace_id: traceId,
+    };
+  }
+
+  const currentCode = normalized.error?.code;
+  const code = !currentCode || currentCode === "UNKNOWN_UPSTREAM_ERROR"
+    ? "UPSTREAM_UNAVAILABLE"
+    : currentCode;
+  const retryable = typeof normalized.error?.retryable === "boolean"
+    ? normalized.error.retryable
+    : code === "UPSTREAM_UNAVAILABLE" || code === "UPSTREAM_TIMEOUT"
+      ? true
+      : undefined;
+
+  return {
+    ...normalized,
+    error: {
+      code,
+      message: normalized.error?.message || `AWKN 产品接口返回 HTTP ${response.status}。`,
+      retryable,
+    },
+    trace_id: traceId,
+  };
+}
+
+function normalizeRateLimitFailure(response: Response, normalized: MarketingProductResponse): MarketingProductResponse {
+  if (response.status !== 429) return normalized;
+  return {
+    ok: false,
+    error: {
+      code: "RATE_LIMITED",
+      message: normalized.ok
+        ? "AWKN 产品接口返回 HTTP 429，拒绝接受成功信封。"
+        : normalized.error?.message || "AWKN 产品接口触发限流。",
+      retryable: true,
+    },
+    trace_id: normalized.trace_id ?? traceFromHeaders(response),
+  };
+}
+
+export async function POST(request: Request) {
+  let body: Partial<MarketingProductRequest> & Record<string, unknown>;
+  try {
+    body = (await request.json()) as Partial<MarketingProductRequest> & Record<string, unknown>;
+  } catch {
+    return NextResponse.json<MarketingProductResponse>(
+      { ok: false, error: { code: "VALIDATION_ERROR", message: "请求体必须是 JSON。" } },
+      { status: 400 },
+    );
+  }
+
+  if (body.product !== "awkn-marketing" || !body.request_id) {
+    return NextResponse.json<MarketingProductResponse>(
+      { ok: false, error: { code: "VALIDATION_ERROR", message: "缺少 product 或 request_id。" } },
+      { status: 400 },
+    );
+  }
+
+  if (!isProductOperation(body.operation)) {
+    return NextResponse.json<MarketingProductResponse>(
+      { ok: false, error: { code: "UNSUPPORTED_OPERATION", message: `不支持的 operation：${String(body.operation ?? "UNKNOWN")}` } },
+      { status: 400 },
+    );
   }
 
   const upstream = process.env.AWKN_MARKETING_API_URL;
-  if (!upstream) return NextResponse.json<MarketingProductResponse>({ ok: false, error: { code: "PLATFORM_NOT_CONFIGURED", message: "AWKN 产品接口尚未配置；本地模式继续使用浏览器状态。", retryable: false } }, { status: 503 });
+  if (!upstream) {
+    return NextResponse.json<MarketingProductResponse>(
+      { ok: false, error: { code: "PLATFORM_NOT_CONFIGURED", message: "AWKN 产品接口尚未配置；本地模式继续使用浏览器状态。", retryable: false } },
+      { status: 503 },
+    );
+  }
+
+  const violation = validateProductRequestContract(body)
+    ?? validateWorkspaceProductRequest(body)
+    ?? validateMaterialProductRequest(body)
+    ?? validateTaskProductRequest(body)
+    ?? validateTaskExecutionProductRequest(body)
+    ?? validateFeedbackProductRequest(body)
+    ?? validateOutcomeProductRequest(body)
+    ?? validateLearningProductRequest(body)
+    ?? validateEvolutionProductRequest(body);
+  if (violation) {
+    return NextResponse.json<MarketingProductResponse>(
+      { ok: false, error: { code: violation.code, message: violation.message, retryable: false } },
+      { status: 400 },
+    );
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetch(upstream, {
       method: "POST",
-      headers: { "content-type": "application/json", ...upstreamIdentityHeaders(request, process.env.AWKN_MARKETING_API_TOKEN) },
-      body: JSON.stringify(body), signal: controller.signal, cache: "no-store",
+      headers: {
+        "content-type": "application/json",
+        ...upstreamIdentityHeaders(request, process.env.AWKN_MARKETING_API_TOKEN),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+      cache: "no-store",
     });
-    const data = (await response.json().catch(() => null)) as MarketingProductResponse | null;
-    if (!data) return NextResponse.json<MarketingProductResponse>({ ok: false, error: { code: "INVALID_UPSTREAM_RESPONSE", message: "AWKN 产品接口返回了非 JSON 响应。" } }, { status: 502 });
-    return NextResponse.json(data, { status: response.status });
+
+    const raw = await response.json().catch(() => null);
+    let normalized = normalizeProductResponseContract(body.operation, raw, {
+      expectedEntityId: expectedWorkspaceEntityId(body)
+        ?? expectedMaterialEntityId(body)
+        ?? expectedTaskEntityId(body)
+        ?? expectedTaskExecutionEntityId(body)
+        ?? expectedFeedbackEntityId(body)
+        ?? expectedOutcomeEntityId(body)
+        ?? expectedLearningEntityId(body)
+        ?? expectedEvolutionEntityId(body),
+      fallbackTraceId: traceFromHeaders(response),
+      httpStatus: response.status,
+    });
+    normalized = normalizeServerFailure(response, normalized);
+    normalized = normalizeRateLimitFailure(response, normalized);
+    normalized = validateMaterialProductResponse(body.operation, normalized);
+    normalized = validateTaskProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
+    normalized = validateTaskExecutionProductResponse(body.operation, normalized, body.task_id, body.workspace_id);
+    normalized = validateLearningProductResponse(body.operation, normalized, body);
+    normalized = validateEvolutionProductResponse(body.operation, normalized, body);
+    const status = normalized.ok ? response.status : response.ok ? 502 : response.status;
+    const retryAfter = retryAfterFromHeaders(response);
+    return NextResponse.json(normalized, {
+      status,
+      headers: retryAfter ? { "retry-after": retryAfter } : undefined,
+    });
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "AbortError";
-    return NextResponse.json<MarketingProductResponse>({ ok: false, error: { code: timedOut ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE", message: timedOut ? "AWKN 产品接口请求超时。" : "暂时无法连接 AWKN 产品接口。", retryable: true } }, { status: timedOut ? 504 : 502 });
-  } finally { clearTimeout(timeout); }
+    return NextResponse.json<MarketingProductResponse>(
+      {
+        ok: false,
+        error: {
+          code: timedOut ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
+          message: timedOut ? "AWKN 产品接口请求超时。" : "暂时无法连接 AWKN 产品接口。",
+          retryable: true,
+        },
+      },
+      { status: timedOut ? 504 : 502 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 }

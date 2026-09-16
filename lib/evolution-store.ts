@@ -1,3 +1,10 @@
+import {
+  evolutionCandidateId,
+  evolutionReviewId,
+  isEvolutionReviewDecision,
+  type EvolutionCandidateEvidenceChain,
+  type EvolutionReviewDecision,
+} from "@/lib/evolution-contract";
 import type { AppliedExperience, EvolutionCandidate } from "@/lib/types";
 
 export type LocalEvolutionCandidate = EvolutionCandidate & {
@@ -8,17 +15,54 @@ export type LocalEvolutionCandidate = EvolutionCandidate & {
   sourceTaskGoal?: string;
   polarity?: "positive" | "caution" | "negative";
   fingerprint?: string;
+  revision?: number;
+  evidence?: EvolutionCandidateEvidenceChain;
 };
 
-export type EvolutionReviewDecision = "accepted" | "scoped" | "rejected";
+export type EvolutionReviewState = {
+  reviewId: string;
+  decision: EvolutionReviewDecision;
+  candidateRevision: number;
+  scopeWorkspaceId?: string;
+  platformRevision?: number;
+  traceId?: string;
+};
+
+export type EvolutionReviewValue = EvolutionReviewDecision | EvolutionReviewState;
 
 export const LOCAL_CANDIDATES_KEY = "marketing:evolution:candidates";
 export const EVOLUTION_REVIEWS_KEY = "marketing:evolution:reviews";
 
 const positiveOutcomes = new Set(["项目推进", "获得反馈", "方案采用"]);
 
-export function candidateFingerprint(input: { finalText: string; feedback: string; outcome: string; outcomeNote: string }) {
-  return JSON.stringify([input.finalText, input.feedback, input.outcome, input.outcomeNote]);
+function normalizeEvidenceRefs(values: readonly string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).sort();
+}
+
+export function candidateRevision(candidate: LocalEvolutionCandidate) {
+  return typeof candidate.revision === "number" && Number.isSafeInteger(candidate.revision) && candidate.revision > 0
+    ? candidate.revision
+    : 1;
+}
+
+export function candidateFingerprint(input: {
+  finalText: string;
+  feedback: string;
+  outcome: string;
+  outcomeNote: string;
+  aiDraft?: string;
+  evidenceRefs?: string[];
+  runId?: string;
+}) {
+  return JSON.stringify([
+    input.aiDraft ?? "",
+    input.finalText,
+    input.feedback,
+    input.outcome,
+    input.outcomeNote,
+    normalizeEvidenceRefs(input.evidenceRefs ?? []),
+    input.runId?.trim() ?? "",
+  ]);
 }
 
 export function createExperienceCandidate(input: {
@@ -27,11 +71,19 @@ export function createExperienceCandidate(input: {
   taskType: string;
   taskGoal: string;
   artifactTitle: string;
+  aiDraft: string;
+  finalText: string;
   feedback: string;
   outcome: string;
   outcomeNote: string;
   editCount: number;
   fingerprint: string;
+  feedbackEventId: string;
+  outcomeEventId: string;
+  evidenceRefs?: string[];
+  runId?: string;
+  traceId?: string;
+  previousCandidate?: LocalEvolutionCandidate;
 }): LocalEvolutionCandidate {
   const isPositive = positiveOutcomes.has(input.outcome);
   const isFailure = input.outcome === "失败";
@@ -45,16 +97,22 @@ export function createExperienceCandidate(input: {
 
   const confidenceBase = isPositive ? 0.62 : input.outcomeNote.trim() ? 0.5 : 0.35;
   const confidence = Math.min(0.75, confidenceBase + (input.feedback === "采用" ? 0.05 : 0) + (input.outcomeNote.trim() ? 0.05 : 0));
+  const id = evolutionCandidateId(input.taskId);
+  const previous = input.previousCandidate?.id === id ? input.previousCandidate : undefined;
+  const sameCandidate = Boolean(previous && previous.fingerprint === input.fingerprint);
+  const previousRevision = previous ? candidateRevision(previous) : 0;
+  const revision = sameCandidate ? previousRevision : previousRevision + 1;
 
   return {
-    id: `local-ev-${input.taskId}`,
+    id,
     taskId: input.taskId,
     workspaceId: input.workspaceId,
     sourceTaskType: input.taskType,
     sourceTaskGoal: input.taskGoal,
     polarity,
     fingerprint: input.fingerprint,
-    createdAt: new Date().toISOString(),
+    revision: Math.max(1, revision),
+    createdAt: sameCandidate && previous ? previous.createdAt : new Date().toISOString(),
     type: isFailure ? "Counterexample Candidate" : "Experience Candidate",
     lesson,
     why: `Feedback：${input.feedback}；Outcome：${input.outcome}；AI 初稿与用户最终稿存在 ${input.editCount} 处结构化差异。${input.outcomeNote.trim() ? ` 结果说明：${input.outcomeNote.trim()}` : " 当前缺少结果原因说明，置信度已降低。"}`,
@@ -62,22 +120,62 @@ export function createExperienceCandidate(input: {
     scope: `${input.taskType} / 相似目标`,
     counterexample: "任务类型、目标、受众、交付形式或业务阶段显著变化时重新验证",
     confidence,
+    evidence: {
+      ai_draft: input.aiDraft,
+      user_final: input.finalText,
+      feedback_event_id: input.feedbackEventId,
+      outcome_event_id: input.outcomeEventId,
+      evidence_refs: normalizeEvidenceRefs(input.evidenceRefs ?? []),
+      run_id: input.runId?.trim() || undefined,
+      trace_id: input.traceId?.trim() || undefined,
+    },
   };
+}
+
+export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandidate) {
+  const evidence = candidate.evidence;
+  return Boolean(
+    candidate.workspaceId
+    && candidate.taskId
+    && candidate.fingerprint
+    && candidate.revision
+    && evidence
+    && evidence.ai_draft.trim()
+    && evidence.user_final.trim()
+    && evidence.feedback_event_id.startsWith(`feedback-event:${candidate.taskId}:`)
+    && evidence.outcome_event_id.startsWith(`outcome-event:${candidate.taskId}:`),
+  );
+}
+
+export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefined, candidate: LocalEvolutionCandidate): EvolutionReviewDecision | null {
+  if (!review || !evolutionCandidateReadyForReview(candidate)) return null;
+  const revision = candidateRevision(candidate);
+  if (typeof review === "string") {
+    return revision === 1 && isEvolutionReviewDecision(review) ? review : null;
+  }
+  if (review.reviewId !== evolutionReviewId(candidate.id)) return null;
+  if (review.candidateRevision !== revision) return null;
+  return isEvolutionReviewDecision(review.decision) ? review.decision : null;
 }
 
 export function matchReviewedExperience(input: {
   candidates: LocalEvolutionCandidate[];
-  reviews: Record<string, string>;
+  reviews: Record<string, EvolutionReviewValue>;
   workspaceId: string;
   taskType: string;
   maxExperiences?: number;
   maxCounterexamples?: number;
 }): { experiences: AppliedExperience[]; counterexamples: LocalEvolutionCandidate[] } {
   const approved = input.candidates
+    .filter(evolutionCandidateReadyForReview)
     .filter((candidate) => candidate.sourceTaskType === input.taskType)
     .filter((candidate) => {
       const review = input.reviews[candidate.id];
-      return review === "accepted" || (review === "scoped" && candidate.workspaceId === input.workspaceId);
+      const decision = reviewDecisionForCandidate(review, candidate);
+      if (decision === "accepted") return true;
+      if (decision !== "scoped") return false;
+      if (typeof review === "object" && review.scopeWorkspaceId) return review.scopeWorkspaceId === input.workspaceId;
+      return candidate.workspaceId === input.workspaceId;
     });
 
   const experiences = approved
@@ -85,8 +183,9 @@ export function matchReviewedExperience(input: {
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, input.maxExperiences ?? 3)
     .map((candidate) => ({
+      id: candidate.id,
       lesson: candidate.lesson,
-      source: `${candidate.source} · 已审核 · ${Math.round(candidate.confidence * 100)}%`,
+      source: `${candidate.source} · 已审核 r${candidateRevision(candidate)} · ${Math.round(candidate.confidence * 100)}%`,
     }));
 
   const counterexamples = approved
