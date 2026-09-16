@@ -2,6 +2,8 @@ import {
   agentRunIdempotencyKey,
   normalizeAgentRuntimeResponse,
   normalizeMarketingAgentInput,
+  stableAgentLogicalActionId,
+  stableAgentMaterialContextFingerprint,
 } from "@/lib/agent-contract";
 import { upstreamIdentityHeaders } from "@/lib/server-upstream-auth";
 
@@ -40,7 +42,15 @@ export async function POST(request: Request) {
   const normalizedInput = normalizeMarketingAgentInput(raw);
   if (!normalizedInput.ok) return errorResponse(normalizedInput.error.code, normalizedInput.error.message, normalizedInput.error.code === "FORBIDDEN" || normalizedInput.error.code === "WORKSPACE_REVOKED" ? 403 : 400);
   const input = normalizedInput.data;
-  const idempotencyKey = agentRunIdempotencyKey(input.taskId, input.logicalActionId);
+  const contextFingerprint = input.materials.length ? stableAgentMaterialContextFingerprint(input.materials) : undefined;
+  const logicalActionId = stableAgentLogicalActionId({
+    taskId: input.taskId,
+    messages: input.messages,
+    appliedExperienceIds: input.appliedExperienceIds,
+    contextFingerprint,
+  });
+  const canonicalInput = input.logicalActionId === logicalActionId ? input : { ...input, logicalActionId };
+  const idempotencyKey = agentRunIdempotencyKey(input.taskId, logicalActionId);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs());
 
@@ -60,7 +70,7 @@ export async function POST(request: Request) {
         idempotency_key: idempotencyKey,
         workspace_id: input.workspaceId,
         task_id: input.taskId,
-        payload: input,
+        payload: canonicalInput,
       }),
       signal: controller.signal,
       cache: "no-store",
