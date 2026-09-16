@@ -37,6 +37,7 @@
 - Independent Reviewer added corrective W7-15/W7-16 commits after the component Baselines. Both parent work units remain `VERIFYING` while required repository-wide runtime evidence is unavailable.
 - Marketing-A focused W7O Contract evidence covers authorization invalidation classification, refresh/invalidation event separation, revoked Grant action denial after Session refresh, revoked projection filtering and no-drift checks. Repository-wide runtime remains `RUNTIME_VERIFICATION_PENDING` and prevents Reviewer `DONE` disposition.
 - Reviewer runtime status: `RUNTIME_VERIFICATION_PENDING` for unavailable repository-wide gates. Environment unavailability is recorded as a blocker; it does not waive ENGINEERING G3/G4.
+- P6-W4C-RV1 Agent context-version idempotency corrective code head: `cd78d85c8fc59d5e4c5caaf7db81a7778109ab52`; current status `REVIEW`; exact-SHA repository runtime remains `RUNTIME_VERIFICATION_PENDING`.
 - P6-W7 status: `VERIFYING` because P6-W7-15 and P6-W7-16 remain under verification.
 - P7: `PLANNED`
 
@@ -44,6 +45,7 @@
 
 | task_id | component | module | priority | status | owner | dependency | blocker | evidence | test_result | commit | updated_at |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| P6-W4C-RV1 | agent context-version idempotency hardening | Agent / Idempotency | P1 | REVIEW | Marketing Product | W4C baseline + carried-forward Reviewer context-version finding | Exact-SHA repository runtime unavailable in GIT_ONLY; required G3/G4 verification must be executed by an authorized runtime owner | `lib/agent-contract.ts`; `lib/material-store.ts`; `components/assistant-ui/marketing-runtime-provider.tsx`; `app/api/agent/route.ts`; `scripts/p6-agent.ts`; server canonical action identity now binds Material revision/content context | STATIC_CONTRACT_REVIEW / RUNTIME_VERIFICATION_PENDING | code head `cd78d85c8fc59d5e4c5caaf7db81a7778109ab52` | 2026-09-16T22:26+08:00 |
 | P6-W7-09 | malformed JSON | Product Adapter / Contract | P0 | DONE | Marketing-A | W7H | - | `docs/P6-W7I-MALFORMED-JSON-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:34+08:00 |
 | P6-W7-10 | malformed success payload | Product Contract / Material | P0 | DONE | Marketing-B | W7-09 | - | `docs/P6-W7J-MALFORMED-SUCCESS-BASELINE.md` | baseline recorded | baseline doc | 2026-09-05T08:38+08:00 |
 | P6-W7-11 | missing entity ack | Product Contract | P0 | DONE | Marketing-B | W7-10 | - | `docs/P6-W7K-MISSING-ENTITY-ACK-BASELINE.md` | worker baseline evidence recorded | `73dede8a0b068c16db506adadfe69783c32bc927` | 2026-09-05T09:26+08:00 |
@@ -62,8 +64,8 @@
 |---|---|---|---|---|---|
 | Local clone verification | BLOCKED_LOCAL_ONLY | `fatal: unable to access 'https://github.com/AWKN-Lab/marketing.git/': Could not resolve host: github.com`; current Reviewer workspace connector is unavailable | Marketing-A: 1 clone attempt in its earlier focused run; Marketing-B: 2 clone attempts across revalidation runs; Independent Reviewer did not retry clone in this review | execution container / local workspace connectivity unavailable | local repository becomes available with dependencies or an authorized local runtime can execute the repository gates |
 | P6-W8 real upstream | BLOCKED | real AWKN endpoints / credentials / final authorization unavailable in repo workflow | recorded, not retried | external platform dependency | valid endpoints, credentials and authorized environment supplied |
-| PR integration | BLOCKED_FOR_MERGE | PR #2 stacked on docs PR #1 / old `main` baseline | recorded | branch ancestry dependency | merge #1, then retarget/rebase #2 |
-| Reviewer runtime verification | RUNTIME_VERIFICATION_PENDING | W7-15/W7-16 contain post-Baseline Reviewer corrections. Focused/static evidence covers current behavior, while required repository-wide gates remain unavailable | A: W7O `VERIFYING`; B: W7P `VERIFYING`; no required repository-wide runtime PASS is claimed | full repository unavailable in current worker environment; execution rules exclude CI/CD/Actions/Runner/deployment | authorized local/runtime owner executes repository typecheck, P0/P6 tests, focused W7O/W7P tests and build against the current corrective head, then updates evidence |
+| PR integration | RESOLVED | PR #1 merged; P6 branch reconciled at `028c7995c4b0ba3f564ff30448f2075938f1d9f8`; `main@b0b06f638b7550628d41c12deb10591f70671040` is an ancestor and PR #2 was mergeable at the latest read | reconciled once | previous ancestry dependency resolved | - |
+| Reviewer runtime verification | RUNTIME_VERIFICATION_PENDING | W7-15/W7-16 contain post-Baseline Reviewer corrections. Latest Independent Review finding `MKT-P6-REV-RUNTIME-EXACTSHA-001` requires an authorized repository receipt bound to the exact candidate SHA; focused/static evidence cannot substitute for G3/G4 | A: W7O `VERIFYING`; B: W7P `VERIFYING`; exact-SHA repository runtime PASS unavailable in GIT_ONLY | authorized repository runtime is unavailable in this execution scope | authorized runtime owner records exact HEAD/worktree plus typecheck, focused W7O/W7P, P0/P6 tests and build, then updates evidence |
 
 ## Independent Reviewer Findings — 2026-09-05
 
@@ -84,9 +86,9 @@
 - Real AWKN server-side exactly-once evidence remains for P6-W8; controlled W7 retries prove product semantics but cannot replace real network evidence.
 - Real Session / Product / Material credentials and final authorization remain for P6-W8.
 - Cross-service trace evidence remains for P6-W8.
-- Agent logical action context-version risk remains a release-review concern unless a later corrective baseline closes it.
+- Agent logical action context-version corrective is now `P6-W4C-RV1` in `REVIEW`; release closure still requires exact-SHA repository runtime evidence.
 - Material lower-revision projection guard and `PLATFORM_NOT_CONFIGURED` taxonomy consistency remain release-review concerns unless later baselines close them.
-- PR #2 remains stacked on docs PR #1 / old main baseline and must be retargeted or rebased before formal merge.
+- PR #2 ancestry/base reconciliation is complete at `028c7995c4b0ba3f564ff30448f2075938f1d9f8`; formal merge still waits on the active Reviewer and P6 runtime/release gates.
 
 ## Coordination rules
 
