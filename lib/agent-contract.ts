@@ -16,6 +16,8 @@ export type MarketingAgentMaterial = {
   source: string;
   status: string;
   parse_mode: string;
+  revision?: number;
+  updated_at?: string;
   content?: string;
   url?: string;
   truncated?: boolean;
@@ -149,6 +151,8 @@ function normalizedMaterials(value: unknown, workspaceId: string): MarketingAgen
     const source = text(row.source);
     const status = text(row.status);
     const parseMode = text(row.parse_mode ?? row.parseMode);
+    const rawRevision = row.revision;
+    if (typeof rawRevision !== "undefined" && (typeof rawRevision !== "number" || !Number.isInteger(rawRevision) || rawRevision < 0)) return null;
     if (!id || !materialWorkspaceId || materialWorkspaceId !== workspaceId || !title || !kind || !source || !status || !parseMode) return null;
     materials.push({
       id,
@@ -158,6 +162,8 @@ function normalizedMaterials(value: unknown, workspaceId: string): MarketingAgen
       source,
       status,
       parse_mode: parseMode,
+      revision: typeof rawRevision === "number" ? rawRevision : undefined,
+      updated_at: text(row.updated_at ?? row.updatedAt) || undefined,
       content: text(row.content) || undefined,
       url: text(row.url) || undefined,
       truncated: typeof row.truncated === "boolean" ? row.truncated : undefined,
@@ -173,16 +179,38 @@ export function appliedExperienceStableId(experience: AppliedExperience) {
   return `experience-${stableHash(JSON.stringify([experience.lesson.trim(), experience.source.trim()]))}`;
 }
 
+export function stableAgentMaterialContextFingerprint(materials: MarketingAgentMaterial[]) {
+  const normalized = materials.map((material) => ({
+    id: material.id.trim(),
+    workspace_id: material.workspace_id.trim(),
+    title: material.title.trim(),
+    kind: material.kind.trim(),
+    source: material.source.trim(),
+    status: material.status.trim(),
+    parse_mode: material.parse_mode.trim(),
+    revision: material.revision ?? null,
+    updated_at: material.updated_at?.trim() ?? "",
+    content_hash: stableHash(material.content ?? ""),
+    url: material.url?.trim() ?? "",
+    truncated: material.truncated ?? false,
+    evidence_hash: stableHash(JSON.stringify(material.evidence ?? [])),
+  })).sort((left, right) => left.id.localeCompare(right.id));
+  return `context-${stableHash(JSON.stringify(normalized))}`;
+}
+
 export function stableAgentLogicalActionId(input: {
   taskId: string;
   messages: MarketingAgentMessage[];
   appliedExperienceIds: string[];
+  contextFingerprint?: string;
 }) {
-  return `action-${stableHash(JSON.stringify({
+  const base = {
     taskId: input.taskId,
     messages: input.messages,
     appliedExperienceIds: [...input.appliedExperienceIds].sort(),
-  }))}`;
+  };
+  const contextFingerprint = text(input.contextFingerprint);
+  return `action-${stableHash(JSON.stringify(contextFingerprint ? { ...base, contextFingerprint } : base))}`;
 }
 
 export function agentRunIdempotencyKey(taskId: string, logicalActionId: string) {
