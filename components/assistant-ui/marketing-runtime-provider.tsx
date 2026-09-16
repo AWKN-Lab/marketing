@@ -11,6 +11,7 @@ import { useProductSession } from "@/components/product-session-provider";
 import {
   appliedExperienceStableId,
   stableAgentLogicalActionId,
+  stableAgentMaterialContextFingerprint,
   type MarketingAgentMessage,
   type MarketingAgentRouteResponse,
 } from "@/lib/agent-contract";
@@ -52,10 +53,12 @@ function createMarketingAdapter(context: {
         workspace_id: context.task.workspaceId,
       }));
       const appliedExperienceIds = context.task.appliedExperiences.map(appliedExperienceStableId);
+      const contextFingerprint = materials.length ? stableAgentMaterialContextFingerprint(materials) : undefined;
       const logicalActionId = stableAgentLogicalActionId({
         taskId: context.task.id,
         messages: serialized,
         appliedExperienceIds,
+        contextFingerprint,
       });
       const currentRequestId = requestId();
       const body = {
