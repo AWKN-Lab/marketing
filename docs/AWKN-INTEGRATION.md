@@ -1,6 +1,6 @@
 # AWKN Marketing｜AWKN 集成与接口契约
 
-> 文档版本：V1.0  
+> 文档版本：V1.1  
 > 上位文档：`docs/ENGINEERING.md`  
 > 目标阶段：P6 Real AWKN Integration
 
@@ -242,21 +242,75 @@ A > B
 
 # 9. Async Contract
 
-Material、Task、Learning 都可能异步执行。
-
-推荐统一异步响应：
+Material、Task、Learning 都可能异步执行。共享契约只统一身份、revision 与 retry 元数据，各资源保留自己的状态枚举。
 
 ```ts
-type AsyncRunAck = {
+type AsyncRunEnvelope<TStatus extends string> = {
   entity_id: string
-  run_id: string
-  status: "queued" | "running" | "completed" | "failed"
+  run_id?: string
+  status: TStatus
   revision: number
   retryable?: boolean
 }
+
+type MaterialAsyncStatus =
+  | "processing"
+  | "ready"
+  | "needs_review"
+  | "failed"
+
+type TaskExecutionStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+
+type LearningRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+
+type MaterialAsyncAck = AsyncRunEnvelope<MaterialAsyncStatus>
+type TaskExecutionAck = AsyncRunEnvelope<TaskExecutionStatus> & { run_id: string }
+type LearningRunAck = AsyncRunEnvelope<LearningRunStatus> & { run_id: string }
 ```
 
-客户端通过对应 `*.get` 查询或由后续事件更新状态。
+Operation 到状态契约的绑定固定如下：
+
+```text
+material.feed / material.parse.get / material.parse.retry
+→ MaterialAsyncAck
+
+task.run / task.execution.get
+→ TaskExecutionAck
+
+learning.run / learning.run.get / learning.run.retry
+→ LearningRunAck
+```
+
+终态规则：
+
+- Material `ready`：解析完成，可进入下游消费。
+- Material `needs_review`：解析停止，等待人工处理；不得自动归类为 success。
+- Material `failed`：终止失败；只有 `retryable=true` 才允许展示 retry。
+- Task `succeeded`：执行成功终态。
+- Task `cancelled`：取消终态；不得继续 polling，也不得改写为 failed/succeeded。
+- Task `failed`：执行失败终态；retry 必须复用原逻辑动作的 idempotency key。
+- Learning `completed`：运行成功终态。
+- Learning `failed`：运行失败终态；retry 保持同一逻辑 run id，物理 attempt 递增。
+
+任何未声明的上游异步状态统一进入 fail-closed 路径：
+
+```text
+UNKNOWN_UPSTREAM_STATE
+→ stop terminal-state inference
+→ stop side-effect progression
+→ expose trace_id / raw status for diagnosis
+```
+
+禁止把未知状态强制映射为 success、failed 或任一已知终态。客户端通过对应 `*.get` 查询或由后续事件更新状态。
 
 P6 先以 polling / explicit refresh 完成可靠性闭环，实时事件能力后续按 AWKN 平台能力接入。
 
@@ -282,6 +336,7 @@ UPSTREAM_TIMEOUT
 RATE_LIMITED
 RUN_FAILED
 UNKNOWN_UPSTREAM_ERROR
+UNKNOWN_UPSTREAM_STATE
 ```
 
 要求：
@@ -346,6 +401,11 @@ Marketing 侧负责业务输入、上下文 scope、任务语义、产品状态�
 10. learning run retry。
 11. platform mode 不允许静默 local session fallback。
 12. trace_id 在失败路径可见。
+13. Material 状态保真：`ready`、`needs_review`、`failed` 不发生语义压缩。
+14. Task 状态保真：`succeeded`、`cancelled`、`failed` 都能独立终止 polling。
+15. Learning 状态保真：`completed`、`failed` 保持原语义，retry 不创建第二个逻辑 run。
+16. 未知异步状态 fail-closed，产生 `UNKNOWN_UPSTREAM_STATE`，不得继续副作用。
+17. `needs_review` 必须进入人工处理路径，禁止按成功完成处理。
 
 ---
 
