@@ -1,7 +1,9 @@
 export type EvalTaskSample = {
   taskId: string;
+  workspaceId: string;
   taskType: string;
-  taskSequence: number;
+  taskSequence?: number;
+  startedAt?: string;
   feedback: string | null;
   outcome: string | null;
   editCount: number;
@@ -19,13 +21,17 @@ export function countLineDiff(aiDraft: string, userFinal: string) {
 }
 
 function orderRepeatedSamples(group: EvalTaskSample[]) {
-  const ordered = [...group].sort((a, b) => a.taskSequence - b.taskSequence || a.taskId.localeCompare(b.taskId));
-  for (let index = 1; index < ordered.length; index += 1) {
-    if (ordered[index - 1].taskSequence === ordered[index].taskSequence) {
-      throw new Error(`Duplicate taskSequence for taskType ${ordered[index].taskType}: ${ordered[index].taskSequence}`);
-    }
+  const hasSequence = group.every((item) => Number.isFinite(item.taskSequence));
+  if (hasSequence) {
+    return [...group].sort((a, b) => (a.taskSequence! - b.taskSequence!) || a.taskId.localeCompare(b.taskId));
   }
-  return ordered;
+
+  const withTime = group.map((item) => ({ item, time: item.startedAt ? Date.parse(item.startedAt) : Number.NaN }));
+  if (withTime.every(({ time }) => Number.isFinite(time))) {
+    return withTime.sort((a, b) => (a.time - b.time) || a.item.taskId.localeCompare(b.item.taskId)).map(({ item }) => item);
+  }
+
+  return null;
 }
 
 export function buildP0Metrics(samples: EvalTaskSample[]) {
@@ -33,30 +39,34 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
   const outcomeSamples = samples.filter((item) => item.outcome);
   const totalEdits = feedbackSamples.reduce((sum, item) => sum + item.editCount, 0);
 
-  const byType = new Map<string, EvalTaskSample[]>();
+  const byWorkspaceAndType = new Map<string, EvalTaskSample[]>();
   for (const sample of feedbackSamples) {
-    if (!Number.isFinite(sample.taskSequence)) {
-      throw new Error(`Invalid taskSequence for task ${sample.taskId}`);
-    }
-    const group = byType.get(sample.taskType) ?? [];
+    const key = `${sample.workspaceId}\u0000${sample.taskType}`;
+    const group = byWorkspaceAndType.get(key) ?? [];
     group.push(sample);
-    byType.set(sample.taskType, group);
+    byWorkspaceAndType.set(key, group);
   }
 
-  const repeated = [...byType.entries()]
-    .filter(([, group]) => group.length >= 2)
-    .map(([taskType, group]) => {
+  const repeated = [...byWorkspaceAndType.values()]
+    .filter((group) => group.length >= 2)
+    .flatMap((group) => {
       const ordered = orderRepeatedSamples(group);
+      if (!ordered) return [];
       const first = ordered[0];
       const latest = ordered[ordered.length - 1];
-      return {
-        taskType,
+      return [{
+        workspaceId: first.workspaceId,
+        taskType: first.taskType,
         samples: ordered.length,
         firstEditCount: first.editCount,
         latestEditCount: latest.editCount,
         editDelta: latest.editCount - first.editCount,
-      };
+      }];
     });
+
+  const unknownOrderGroups = [...byWorkspaceAndType.values()]
+    .filter((group) => group.length >= 2 && !orderRepeatedSamples(group))
+    .map((group) => ({ workspaceId: group[0].workspaceId, taskType: group[0].taskType, samples: group.length }));
 
   return {
     totalTasks: samples.length,
@@ -67,6 +77,7 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
     experienceReuseRate: samples.length ? samples.filter((item) => item.appliedExperienceCount > 0).length / samples.length : 0,
     averageEditCount: feedbackSamples.length ? totalEdits / feedbackSamples.length : 0,
     repeatedTaskTypes: repeated,
+    unknownOrderGroups,
     improvedTaskTypes: repeated.filter((item) => item.editDelta < 0).length,
   };
 }
