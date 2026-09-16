@@ -53,6 +53,8 @@ export function buildAgentMaterialContext(materials: LocalMaterial[], maxChars =
         source: material.source,
         status: material.status,
         parse_mode: material.parseMode,
+        revision: material.platformRevision,
+        updated_at: material.platformUpdatedAt,
         url: material.url,
         evidence: material.evidence?.slice(0, 5),
       };
@@ -66,6 +68,8 @@ export function buildAgentMaterialContext(materials: LocalMaterial[], maxChars =
       source: material.source,
       status: material.status,
       parse_mode: material.parseMode,
+      revision: material.platformRevision,
+      updated_at: material.platformUpdatedAt,
       content,
       truncated: content.length < material.content.length,
       evidence: material.evidence?.slice(0, 5),
