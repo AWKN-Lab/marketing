@@ -141,3 +141,17 @@ P6–P7 的具体执行状态统一维护在 `DEVELOPMENT-PLAN.md` 的执行看�
 - deployment topology
 
 阶段完成后新增对应 Baseline 文档，禁止直接修改历史基线来覆盖旧事实。
+
+---
+
+# 医药营销战役扩展（独立候选）
+
+> `Pharma Campaign OS` 是仓库内独立的医药营销产品扩展文档，当前只完成产品与工程设计。原“自主进化营销助理”PRD、P0–P5 开发基线及 P6/P7 联调主线保持不变。
+
+- [医药战役文档总入口](./pharma-campaign-os/README.md)
+- [最小 MVP PRD](./pharma-campaign-os/PRD.md)
+- [竞品研究与用户评价](./pharma-campaign-os/RESEARCH.md)
+- [工程母文档](./pharma-campaign-os/ENGINEERING.md)
+- [组件开发计划](./pharma-campaign-os/DEVELOPMENT-PLAN.md)
+- [可编辑工作流程泳道图](./pharma-campaign-os/WORKFLOW.md)
+
