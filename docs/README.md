@@ -141,3 +141,11 @@ P6–P7 的具体执行状态统一维护在 `DEVELOPMENT-PLAN.md` 的执行看�
 - deployment topology
 
 阶段完成后新增对应 Baseline 文档，禁止直接修改历史基线来覆盖旧事实。
+
+---
+
+# 8. V2 自主获客与营收增长扩展（提案态）
+
+提案入口：[v2/README.md](v2/README.md)，包含 V2 扩展 PRD、C11 需求雷达、C12 获客转化、C13 营收验证组件工程文档，以及隔离执行计划。
+
+**状态：PROPOSED / DOCUMENTATION_ONLY。** 当前 V1 业务边界与 P6–P7 的交付、运行和验收承诺均保持不变。V2 无运行代码、对外自动联系或真实收入验收结论。
