@@ -40,6 +40,8 @@ export type MarketingSession = {
   roles: string[];
   capabilities: MarketingCapability[];
   workspaceGrants: WorkspaceGrant[];
+  /** 平台显式撤销的 Workspace。与「没有 Grant」区分开：撤销需要独立可见性语义。 */
+  revokedWorkspaceIds: string[];
   teamEnabled: boolean;
 };
 
@@ -51,6 +53,7 @@ export const LOCAL_MARKETING_SESSION: MarketingSession = {
   roles: ["owner"],
   capabilities: LOCAL_CAPABILITIES,
   workspaceGrants: [],
+  revokedWorkspaceIds: [],
   teamEnabled: false,
 };
 
@@ -152,6 +155,13 @@ export function normalizeMarketingSession(input: unknown): MarketingSession | nu
     workspaceGrants.push({ workspaceId, access });
   }
 
+  const rawRevoked = row.revoked_workspace_ids ?? row.revokedWorkspaceIds ?? [];
+  if (!Array.isArray(rawRevoked)) return null;
+  const revokedWorkspaceIds = [...new Set(strings(rawRevoked))];
+  for (const workspaceId of revokedWorkspaceIds) {
+    if (seenWorkspaceIds.has(workspaceId)) return null;
+  }
+
   return {
     mode,
     tenant: { id: tenantId, name: text(tenantRow?.name ?? row.tenant_name) || tenantId },
@@ -159,6 +169,7 @@ export function normalizeMarketingSession(input: unknown): MarketingSession | nu
     roles: [...new Set(strings(row.roles))],
     capabilities,
     workspaceGrants,
+    revokedWorkspaceIds,
     teamEnabled,
   };
 }

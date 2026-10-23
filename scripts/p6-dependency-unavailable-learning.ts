@@ -11,7 +11,7 @@ import {
   type LearningRun,
 } from "../lib/learning-run-store.ts";
 import { assertP6FaultMatrixRecord } from "./p6-failure-support.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withProductUpstream } from "./p6-test-support.ts";
 
 const NOW = "2026-09-05T10:32:00.000Z";
 const WORKSPACE_ID = "w-p6-dependency-learning";
@@ -20,21 +20,6 @@ const RUN_ID = "learning-run-w7-16";
 const RETRY_ATTEMPT = 2;
 const KEY = learningRunRetryIdempotencyKey(RUN_ID, RETRY_ATTEMPT);
 
-type Responder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withProductUpstream<T>(responder: Responder, run: () => Promise<T>) {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://product.integration.invalid";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function body(requestId: string) {
   return {

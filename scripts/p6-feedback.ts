@@ -7,31 +7,12 @@ import {
   isFeedbackDisposition,
   validateFeedbackProductRequest,
 } from "../lib/feedback-contract.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withProductUpstream } from "./p6-test-support.ts";
 
 const NOW = "2026-09-05T04:30:00.000Z";
 const WORKSPACE_ID = "w-p6-feedback";
 const TASK_ID = "task-p6-feedback";
 
-type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withProductUpstream<T>(responder: UpstreamResponder, run: () => Promise<T>): Promise<T> {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousToken = process.env.AWKN_MARKETING_API_TOKEN;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://product.integration.invalid";
-  process.env.AWKN_MARKETING_API_TOKEN = "service-secret";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    if (typeof previousToken === "undefined") delete process.env.AWKN_MARKETING_API_TOKEN;
-    else process.env.AWKN_MARKETING_API_TOKEN = previousToken;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function feedbackEvent(overrides: Partial<Parameters<typeof buildFeedbackEvent>[0]> = {}) {
   return buildFeedbackEvent({
