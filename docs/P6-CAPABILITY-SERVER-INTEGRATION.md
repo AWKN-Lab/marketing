@@ -98,10 +98,17 @@ learning / evolution 响应校验全部原样保留。改动只在传输层：
 
 ## 尚未闭环的部分
 
-- 能力服务当前只装配营销插件。营销插件声明的 6 项平台依赖
-  （`policy.evaluate` / `evidence.evaluate` / `memory.capture` / `agent.delegate` /
-  `skill.evaluate` / `work.task.create`）在 `/v1/health` 的 `unresolvedRequirements`
-  **如实上报**，不假装已满足。`AWKN_CAPABILITY_SERVER_STRICT=true` 时拒绝启动。
+- 营销插件声明的 6 项平台依赖（`policy.evaluate` / `evidence.evaluate` /
+  `memory.capture` / `agent.delegate` / `skill.evaluate` / `work.task.create`）
+  现在**已由平台插件提供** —— 能力服务改用组合根装配，`unresolvedRequirements` 为空，
+  `AWKN_CAPABILITY_SERVER_STRICT=true` 能正常启动。
+  但这些平台插件背后是**未绑定或进程内**的端口：能力存在、可被调用，
+  没绑定后端时显式失败，不静默成功。**依赖被满足了，后端还不是生产级。**
+- 营销插件声明这 6 项能力但今天并不调用它们 —— 声明从「悬着」变成「可满足」，
+  仍然只是契约，不是行为依赖。
+- 能力服务的**对外暴露面只有营销插件的 21 个能力**。平台依赖不因此变成对外能力面
+  （调 `work.task.create` 等会得到 403）。营销仓持有服务令牌、端用户不可信，
+  这条边界是刻意的。
 - 插件侧 `MarketingProductState` 是进程内实现，不声称生产可用。
 - `component_id` C59 分配、C60 保留槽位使用与否，仍待 Owner 裁决。
 - Session 的正式来源目前由产品层转发；若平台后续提供正式的 session /
