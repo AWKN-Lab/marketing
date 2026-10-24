@@ -225,6 +225,38 @@ latest edit count - first edit count
 
 负值代表修改量下降。
 
+**该公式只比较首尾，测不出中途劣化。** 编辑量 8 → 12 → 3 的序列，端点是「改善 5」，
+但中间那次比首次更差。开篇第 3 条要求的是「重复任务中的实际表现**持续**改善」，
+端点差回答不了「持续」这个问题。
+
+因此除 `editDelta` 外，同一组样本还计算：
+
+```text
+peakEditCount = 组内编辑量最大值
+peakEditDelta = peakEditCount - firstEditCount
+trajectory     = improving | improving-with-regression | stable | deteriorating
+```
+
+| trajectory | 判定 | 含义 |
+|---|---|---|
+| `improving` | `editDelta < 0` 且 `peakEditDelta <= 0` | 末次优于首次，且中途没有比首次更差 —— 持续改善 |
+| `improving-with-regression` | `editDelta < 0` 且 `peakEditDelta > 0` | 末次优于首次，但中途劣化过 —— 端点差会掩盖这一类 |
+| `stable` | `editDelta === 0` | 末次等于首次 |
+| `deteriorating` | `editDelta > 0` | 末次差于首次 |
+
+指标口径：
+
+- `improvedTaskTypes` —— **持续改善**的组数（严格口径，对外结论用它）。
+- `endpointImprovedTaskTypes` —— 端点改善的组数（保留原公式口径，仅供对照）。
+- `regressedMidwayTaskTypes` —— 端点改善但中途劣化过的组数。
+
+**只有 2 个样本时峰值就是首末两者的较大值，两个口径必然一致**，
+所以这个改动只影响 3 个及以上样本的组。
+
+> 改动说明：该口径**只收紧、不放宽**（`improvedTaskTypes` 只会更少），
+> 与「首轮禁止为了通过验收临时改指标定义或删除失败样本」不冲突 ——
+> 改动的目的是让指标测得出它本来要测的东西，不是让验收更容易过。
+
 验收必须覆盖：
 
 - 输入数组为 newest-first 时仍得到正确方向；
