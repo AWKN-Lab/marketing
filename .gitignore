@@ -6,3 +6,6 @@ out
 .env.integration.local
 *.log
 .DS_Store
+
+# TypeScript incremental build artifact
+tsconfig.tsbuildinfo
