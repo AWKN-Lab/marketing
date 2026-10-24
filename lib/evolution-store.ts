@@ -1,10 +1,13 @@
 import {
   evolutionCandidateId,
+  evolutionPatternCandidateId,
   evolutionReviewId,
   isEvolutionReviewDecision,
   type EvolutionCandidateEvidenceChain,
   type EvolutionReviewDecision,
+  type PatternSupportingChain,
 } from "@/lib/evolution-contract";
+import { PATTERN_MIN_SUPPORT, detectPatterns, type PatternSample, type PatternSignal } from "@/lib/pattern-detection";
 import type { AppliedExperience, EvolutionCandidate } from "@/lib/types";
 
 export type LocalEvolutionCandidate = EvolutionCandidate & {
@@ -134,7 +137,7 @@ export function createExperienceCandidate(input: {
 
 export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandidate) {
   const evidence = candidate.evidence;
-  return Boolean(
+  const baseReady = Boolean(
     candidate.workspaceId
     && candidate.taskId
     && candidate.fingerprint
@@ -145,6 +148,89 @@ export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandid
     && evidence.feedback_event_id.startsWith(`feedback-event:${candidate.taskId}:`)
     && evidence.outcome_event_id.startsWith(`outcome-event:${candidate.taskId}:`),
   );
+  if (!baseReady) return false;
+  if (!evidence?.pattern_evidence) return true;
+  // Pattern Candidate 额外要求：跨任务支撑证据链完整，且每个支撑任务都有独立事件链。
+  const pattern = evidence.pattern_evidence;
+  return Boolean(
+    pattern.support_count >= PATTERN_MIN_SUPPORT
+    && pattern.source_task_ids.length >= PATTERN_MIN_SUPPORT
+    && pattern.supporting_chains.length >= PATTERN_MIN_SUPPORT
+    && pattern.source_task_ids.includes(candidate.taskId)
+    && pattern.supporting_chains.every((chain) => chain.task_id
+      && chain.feedback_event_id.startsWith(`feedback-event:${chain.task_id}:`)
+      && chain.outcome_event_id.startsWith(`outcome-event:${chain.task_id}:`)),
+  );
+}
+
+export function createPatternCandidate(input: {
+  pattern: PatternSignal;
+  anchorTaskId: string;
+  anchor: {
+    aiDraft: string;
+    userFinal: string;
+    feedbackEventId: string;
+    outcomeEventId: string;
+    evidenceRefs?: string[];
+    runId?: string;
+    traceId?: string;
+  };
+  supportingChains: PatternSupportingChain[];
+  previousCandidate?: LocalEvolutionCandidate;
+}): LocalEvolutionCandidate {
+  const { pattern } = input;
+  const id = evolutionPatternCandidateId(pattern.patternId);
+  const previous = input.previousCandidate?.id === id ? input.previousCandidate : undefined;
+  const fingerprint = JSON.stringify([
+    pattern.kind,
+    pattern.patternId,
+    pattern.supportCount,
+    [...pattern.sourceTaskIds].sort(),
+    input.supportingChains.map((chain) => chain.task_id).sort(),
+  ]);
+  const sameCandidate = Boolean(previous && previous.fingerprint === fingerprint);
+  const previousRevision = previous ? candidateRevision(previous) : 0;
+  const revision = sameCandidate ? previousRevision : previousRevision + 1;
+
+  const type = pattern.kind === "repeated-failure"
+    ? "Counterexample Candidate"
+    : pattern.kind === "repeated-edit"
+      ? "Preference Candidate"
+      : "Decision Pattern Candidate";
+
+  return {
+    id,
+    taskId: input.anchorTaskId,
+    workspaceId: pattern.workspaceId,
+    sourceTaskType: pattern.taskType,
+    polarity: pattern.polarity,
+    fingerprint,
+    revision: Math.max(1, revision),
+    createdAt: sameCandidate && previous ? previous.createdAt : new Date().toISOString(),
+    type,
+    lesson: pattern.lesson,
+    why: pattern.why,
+    source: `${pattern.sourceTaskIds.join(" / ")} · 跨任务重复模式 · ${pattern.supportCount} 次支持`,
+    scope: pattern.scope,
+    counterexample: pattern.counterexample,
+    confidence: pattern.confidence,
+    evidence: {
+      ai_draft: input.anchor.aiDraft,
+      user_final: input.anchor.userFinal,
+      feedback_event_id: input.anchor.feedbackEventId,
+      outcome_event_id: input.anchor.outcomeEventId,
+      evidence_refs: normalizeEvidenceRefs(input.anchor.evidenceRefs ?? []),
+      run_id: input.anchor.runId?.trim() || undefined,
+      trace_id: input.anchor.traceId?.trim() || undefined,
+      pattern_evidence: {
+        kind: pattern.kind,
+        signal: pattern.kind === "repeated-edit" ? pattern.removedLines[0] ?? "" : pattern.outcomes[0] ?? "",
+        support_count: pattern.supportCount,
+        source_task_ids: [...pattern.sourceTaskIds],
+        supporting_chains: input.supportingChains,
+      },
+    },
+  };
 }
 
 export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefined, candidate: LocalEvolutionCandidate): EvolutionReviewDecision | null {
@@ -156,6 +242,43 @@ export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefi
   if (review.reviewId !== evolutionReviewId(candidate.id)) return null;
   if (review.candidateRevision !== revision) return null;
   return isEvolutionReviewDecision(review.decision) ? review.decision : null;
+}
+
+export function buildPatternCandidates(input: {
+  samples: PatternSample[];
+  previous?: LocalEvolutionCandidate[];
+}): LocalEvolutionCandidate[] {
+  const samples = input.samples.filter((sample) => sample.feedbackEventId && sample.outcomeEventId);
+  const patterns = detectPatterns(samples);
+  return patterns.map((pattern) => {
+    const anchorTaskId = pattern.sourceTaskIds[pattern.sourceTaskIds.length - 1];
+    const anchor = samples.find((sample) => sample.taskId === anchorTaskId);
+    if (!anchor) return null;
+    const supportingChains = pattern.sourceTaskIds.map((taskId) => {
+      const sample = samples.find((item) => item.taskId === taskId);
+      return {
+        task_id: taskId,
+        feedback_event_id: sample?.feedbackEventId ?? "",
+        outcome_event_id: sample?.outcomeEventId ?? "",
+      };
+    });
+    const id = evolutionPatternCandidateId(pattern.patternId);
+    return createPatternCandidate({
+      pattern,
+      anchorTaskId,
+      anchor: {
+        aiDraft: anchor.aiDraft,
+        userFinal: anchor.userFinal,
+        feedbackEventId: anchor.feedbackEventId ?? "",
+        outcomeEventId: anchor.outcomeEventId ?? "",
+        evidenceRefs: anchor.evidenceRefs,
+        runId: anchor.runId,
+        traceId: anchor.traceId,
+      },
+      supportingChains,
+      previousCandidate: input.previous?.find((candidate) => candidate.id === id),
+    });
+  }).filter((candidate): candidate is LocalEvolutionCandidate => candidate !== null);
 }
 
 export function matchReviewedExperience(input: {
