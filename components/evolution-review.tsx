@@ -8,6 +8,7 @@ import {
   EVOLUTION_REVIEWS_KEY,
   LOCAL_CANDIDATES_KEY,
   buildPatternCandidates,
+  patternEligibleSamples,
   candidateRevision,
   evolutionCandidateReadyForReview,
   reviewDecisionForCandidate,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/evolution-contract";
 import { readPersistedValue } from "@/lib/persistence";
 import { PATTERN_MIN_SUPPORT, type PatternSample } from "@/lib/pattern-detection";
+import { callPatternDetect } from "@/lib/pattern-client";
 import { canMarketingAction, filterReadableWorkspaceItems } from "@/lib/product-session";
 import { readSyncRecord, syncMarketingProduct } from "@/lib/sync-store";
 import { LOCAL_TASKS_KEY } from "@/lib/task-store";
@@ -39,8 +41,14 @@ export function EvolutionReview({ candidates }: { candidates: EvolutionCandidate
   const hasRealCandidates = visibleLocal.length > 0;
   const allCandidates: EvolutionCandidate[] = hasRealCandidates ? visibleLocal : candidates;
 
-  /** 跨任务重复模式：把已确认任务的同向信号聚合成可审核的 Pattern Candidate。 */
-  function detectCrossTaskPatterns() {
+  /**
+   * 跨任务重复模式：把已确认任务的同向信号聚合成可审核的 Pattern Candidate。
+   *
+   * 平台模式由 AWKN OS 营销插件（`marketing.pattern.detect`）计算 —— 产品层只送样本、收结果；
+   * 本地模式没有平台，由 `lib/pattern-detection.ts` 作为离线回退承担。
+   * 两条路径必须给出同一个 patternId，否则平台与本地认不出同一个模式。
+   */
+  async function detectCrossTaskPatterns() {
     const taskById = new Map(tasks.map((task) => [task.id, task]));
     const samples: PatternSample[] = [];
     for (const candidate of visibleLocal) {
@@ -69,7 +77,22 @@ export function EvolutionReview({ candidates }: { candidates: EvolutionCandidate
       });
     }
 
-    const detected = buildPatternCandidates({ samples, previous: localCandidates });
+    const eligible = patternEligibleSamples(samples);
+    let detected: LocalEvolutionCandidate[];
+    if (session.mode === "platform") {
+      const response = await callPatternDetect({
+        workspaceId: samples[0]?.workspaceId,
+        samples: eligible,
+        requestId: `pattern-detect-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      });
+      if (!response.ok) {
+        setPatternMessage(`平台模式检测未成功：${response.error?.message ?? "unknown error"}`);
+        return;
+      }
+      detected = buildPatternCandidates({ samples, previous: localCandidates, patterns: response.data?.patterns ?? [] });
+    } else {
+      detected = buildPatternCandidates({ samples, previous: localCandidates });
+    }
     if (!detected.length) {
       setPatternMessage(`未检测到重复模式。至少需要同一 Workspace、同类型任务各 ${PATTERN_MIN_SUPPORT} 次出现同向信号。`);
       return;
@@ -148,7 +171,7 @@ export function EvolutionReview({ candidates }: { candidates: EvolutionCandidate
     {hasRealCandidates
       ? <div className="stack-md">
           <div className="row gap-sm">
-            <button className="button secondary" onClick={detectCrossTaskPatterns}>从已确认任务检测重复模式</button>
+            <button className="button secondary" onClick={() => void detectCrossTaskPatterns()}>从已确认任务检测重复模式</button>
             <span className="muted small">{patternMessage || "跨任务重复模式是 PRD §21.1 的第三类学习源；单次修改不会自动上升为普遍经验。"}</span>
           </div>
         </div>

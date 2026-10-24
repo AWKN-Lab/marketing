@@ -119,6 +119,69 @@ export type CapabilityCall = {
   body: unknown;
 };
 
+/**
+ * 调用**非实体能力**（不属于 19 个产品 operation 的能力）。
+ *
+ * 平台插件除 19 个产品能力外还提供 `marketing.pattern.detect` 与
+ * `marketing.experience.match`。它们是**派生读**：不创建、不修改任何实体，
+ * 因此不属于产品契约的实体操作集，单独走一个入口。
+ *
+ * wire format 与实体能力完全一致（业务字段在 `input.payload`），
+ * 平台侧插件按同一口径解包 —— 见 `plugins/awkn-marketing/src/plugin.ts`。
+ */
+export async function invokeMarketingCapability(input: {
+  endpoint: string;
+  token?: string | undefined;
+  session: MarketingSession;
+  capability: string;
+  payload: unknown;
+  requestId: string;
+  workspaceId?: string | undefined;
+  timeoutMs?: number;
+}): Promise<CapabilityCall> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? CAPABILITY_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${input.endpoint.replace(/\/+$/, "")}/v1/capabilities/invoke`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
+        [CAPABILITY_SESSION_HEADER]: encodeCapabilitySessionHeader(input.session),
+        "x-request-id": input.requestId,
+      },
+      body: JSON.stringify({
+        capability: input.capability,
+        input: {
+          product: "awkn-marketing",
+          operation: input.capability,
+          request_id: input.requestId,
+          workspace_id: input.workspaceId,
+          payload: input.payload,
+        },
+        idempotencyKey: input.requestId,
+      }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    let body: unknown = null;
+    if (text) {
+      try { body = JSON.parse(text); } catch { body = null; }
+    }
+    return { status: response.status, headers: response.headers, body };
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    throw new CapabilityTransportError(
+      timedOut ? "UPSTREAM_TIMEOUT" : "UPSTREAM_UNAVAILABLE",
+      timedOut ? "AWKN 能力服务请求超时。" : "暂时无法连接 AWKN 能力服务。",
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function invokeCapability(input: {
   endpoint: string;
   token?: string | undefined;

@@ -20,6 +20,7 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
+import { detectPatterns, type PatternSample } from "../lib/pattern-detection.ts";
 import { writeFileSync } from "node:fs";
 
 const CAPABILITY_URL = process.env.AWKN_MARKETING_CAPABILITY_URL ?? "";
@@ -130,8 +131,33 @@ async function waitFor(url: string, timeoutMs: number): Promise<boolean> {
   return false;
 }
 
+/**
+ * 端口前置检查。
+ *
+ * 端口上如果已经有别的 Next 进程在跑，本 harness 连上去测的是**旧代码**，
+ * 却会把结果当成当前代码的证据 —— 这是最危险的一种假绿。
+ * 宁可直接失败，也不允许在陈旧服务上取证。
+ */
+async function assertPortFree(port: number, label: string): Promise<void> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/`, { method: "GET" });
+    if (response.status < 500) {
+      throw new Error(
+        `端口 ${port}（${label}）已被占用：本 harness 会连到已有服务上，测到的将是旧代码。`
+        + `请先停掉占用进程再重跑（lsof -ti:${port} | xargs kill -9）。`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("端口")) throw error;
+    // 连接失败 = 端口空闲，符合预期。
+  }
+}
+
 function startNextServer(): ChildProcess {
   const child = spawn("npx", ["next", "start", "-p", String(PORT)], {
+    // 独立进程组：`npx` 会再生一层子进程，只杀 npx 杀不掉真正的 next server，
+    // 端口会被遗留占用，下一次跑就可能连到旧服务上测出假绿。
+    detached: true,
     env: {
       ...process.env,
       NODE_ENV: "production",
@@ -166,6 +192,22 @@ async function callProduct(body: Record<string, unknown>, headers: Record<string
   return { status: response.status, body: (await response.json()) as ProductResponse };
 }
 
+/** 调用产品层的模式检测路由（F1 收口：平台模式由插件计算）。 */
+async function callPatternDetect(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const response = await fetch(`${BASE_URL}/api/patterns`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  try {
+    return { status: response.status, body: JSON.parse(text) as Record<string, unknown> };
+  } catch {
+    // 不是 JSON（例如路由不存在时的 404 HTML）—— 记下来，不让整个 harness 崩掉。
+    return { status: response.status, body: { ok: false, error: { code: "INVALID_JSON_RESPONSE", message: text.slice(0, 200) } } };
+  }
+}
+
 function workspaceCreateBody(requestId: string, workspaceId: string, name: string): Record<string, unknown> {
   // 产品契约形状：payload.workspace 信封。
   return {
@@ -198,9 +240,21 @@ async function main(): Promise<void> {
     return;
   }
 
+  await assertPortFree(PORT, "营销仓 Next server");
+  await assertPortFree(SESSION_PORT, "平台 Session 夹具");
+
   const sessionServer = await startSessionFixture();
   const next = startNextServer();
-  const cleanup = () => { next.kill("SIGTERM"); sessionServer.close(); };
+  const cleanup = () => {
+    try {
+      // 负号 = 整个进程组。
+      if (next.pid) process.kill(-next.pid, "SIGTERM");
+      else next.kill("SIGTERM");
+    } catch {
+      next.kill("SIGTERM");
+    }
+    sessionServer.close();
+  };
   process.on("exit", cleanup);
 
   const ready = await waitFor(`${BASE_URL}/api/status`, 90_000);
@@ -306,6 +360,55 @@ async function main(): Promise<void> {
     stale.body.ok === false && stale.body.error?.code === "REVISION_CONFLICT",
     { status: stale.status, body: stale.body },
   );
+
+  // ── F1 收口：平台路径与本地路径必须给出同一个 patternId ──
+  {
+    const samples = [
+      {
+        taskId: "f1-t-1",
+        workspaceId,
+        taskType: "策略判断",
+        feedback: "修改后采用",
+        outcome: "项目推进",
+        editCount: 2,
+        aiDraft: "标题\n宏观趋势铺垫段落\n核心判断",
+        userFinal: "标题\n核心判断",
+        completedAt: "2026-09-01T00:00:00.000Z",
+        feedbackEventId: "feedback-event:f1-t-1:fp",
+        outcomeEventId: "outcome-event:f1-t-1:fp",
+      },
+      {
+        taskId: "f1-t-2",
+        workspaceId,
+        taskType: "策略判断",
+        feedback: "修改后采用",
+        outcome: "项目推进",
+        editCount: 2,
+        aiDraft: "标题\n宏观趋势铺垫段落\n核心判断",
+        userFinal: "标题\n核心判断",
+        completedAt: "2026-09-02T00:00:00.000Z",
+        feedbackEventId: "feedback-event:f1-t-2:fp",
+        outcomeEventId: "outcome-event:f1-t-2:fp",
+      },
+    ];
+    const response = await callPatternDetect({
+      product: "awkn-marketing",
+      request_id: `pattern-detect-${RUN_ID}`,
+      workspace_id: workspaceId,
+      samples,
+    });
+    const data = response.body?.data as { patterns?: Array<{ kind: string; patternId: string }> } | undefined;
+    const platformIds = (data?.patterns ?? []).map((item) => `${item.kind}=${item.patternId}`).sort();
+    // 本地（离线回退）路径用同一份样本算一次，两边必须一致。
+    const localIds = detectPatterns(samples as unknown as PatternSample[])
+      .map((item) => `${item.kind}=${item.patternId}`)
+      .sort();
+    check(
+      "F1 收口：平台插件与产品层本地回退给出同一个 patternId",
+      response.status === 200 && platformIds.length > 0 && JSON.stringify(platformIds) === JSON.stringify(localIds),
+      { status: response.status, platformIds, localIds },
+    );
+  }
 
   // ── 用例 5：授权判定在服务端（撤权后拒绝） ──
   await fetch(`${SESSION_URL}/_control/revoke?workspace_id=${encodeURIComponent(workspaceId)}`, { method: "POST" });

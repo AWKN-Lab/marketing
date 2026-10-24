@@ -8,6 +8,7 @@ import {
   type PatternSupportingChain,
 } from "@/lib/evolution-contract";
 import { PATTERN_MIN_SUPPORT, detectPatterns, type PatternSample, type PatternSignal } from "@/lib/pattern-detection";
+import { matchTaskType } from "@/lib/task-affinity";
 import type { AppliedExperience, EvolutionCandidate } from "@/lib/types";
 
 export type LocalEvolutionCandidate = EvolutionCandidate & {
@@ -244,12 +245,25 @@ export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefi
   return isEvolutionReviewDecision(review.decision) ? review.decision : null;
 }
 
+/**
+ * 参与模式形成的样本过滤。
+ *
+ * 参与模式时必须提供独立事件链（feedback / outcome），否则支撑任务无法回溯证据。
+ * **平台路径与本地路径必须用同一个过滤器** —— 否则平台会检测到本地看不到的模式，
+ * 两层就出现了语义漂移。
+ */
+export function patternEligibleSamples(samples: readonly PatternSample[]): PatternSample[] {
+  return samples.filter((sample) => sample.feedbackEventId && sample.outcomeEventId);
+}
+
 export function buildPatternCandidates(input: {
   samples: PatternSample[];
   previous?: LocalEvolutionCandidate[];
+  /** 平台已算好的模式。传入时用平台结果，不传则本地计算（离线回退）。 */
+  patterns?: PatternSignal[];
 }): LocalEvolutionCandidate[] {
-  const samples = input.samples.filter((sample) => sample.feedbackEventId && sample.outcomeEventId);
-  const patterns = detectPatterns(samples);
+  const samples = patternEligibleSamples(input.samples);
+  const patterns = input.patterns ?? detectPatterns(samples);
   return patterns.map((pattern) => {
     const anchorTaskId = pattern.sourceTaskIds[pattern.sourceTaskIds.length - 1];
     const anchor = samples.find((sample) => sample.taskId === anchorTaskId);
@@ -291,30 +305,45 @@ export function matchReviewedExperience(input: {
 }): { experiences: AppliedExperience[]; counterexamples: LocalEvolutionCandidate[] } {
   const approved = input.candidates
     .filter(evolutionCandidateReadyForReview)
-    .filter((candidate) => candidate.sourceTaskType === input.taskType)
-    .filter((candidate) => {
+    .flatMap((candidate) => {
+      // PRD §21.1 C 与验收第 10 条要求「相似任务」能被再次匹配，因此不能只做 taskType 全等。
+      // 同类型直接命中；跨类型只认显式的 1 跳亲缘边，并按边权降权。
+      const relation = matchTaskType(candidate.sourceTaskType ?? "", input.taskType);
+      if (!relation) return [];
       const review = input.reviews[candidate.id];
       const decision = reviewDecisionForCandidate(review, candidate);
-      if (decision === "accepted") return true;
-      if (decision !== "scoped") return false;
-      if (typeof review === "object" && review.scopeWorkspaceId) return review.scopeWorkspaceId === input.workspaceId;
-      return candidate.workspaceId === input.workspaceId;
-    });
-
-  const experiences = approved
-    .filter((candidate) => candidate.polarity !== "negative")
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, input.maxExperiences ?? 3)
-    .map((candidate) => ({
-      id: candidate.id,
-      lesson: candidate.lesson,
-      source: `${candidate.source} · 已审核 r${candidateRevision(candidate)} · ${Math.round(candidate.confidence * 100)}%`,
+      if (decision === "accepted") return [{ candidate, relation }];
+      if (decision !== "scoped") return [];
+      if (typeof review === "object" && review.scopeWorkspaceId) {
+        return review.scopeWorkspaceId === input.workspaceId ? [{ candidate, relation }] : [];
+      }
+      return candidate.workspaceId === input.workspaceId ? [{ candidate, relation }] : [];
+    })
+    .map((item) => ({
+      candidate: item.candidate,
+      relation: item.relation,
+      effectiveConfidence: item.candidate.confidence * item.relation.weight,
     }));
 
+  const experiences = approved
+    .filter((item) => item.candidate.polarity !== "negative")
+    .sort((a, b) => b.effectiveConfidence - a.effectiveConfidence || a.candidate.id.localeCompare(b.candidate.id))
+    .slice(0, input.maxExperiences ?? 3)
+    .map((item) => {
+      const candidate = item.candidate;
+      const relationNote = item.relation.relation === "related" ? ` · 跨类型推断（来自「${item.relation.sourceTaskType}」）` : "";
+      return {
+        id: candidate.id,
+        lesson: candidate.lesson,
+        source: `${candidate.source} · 已审核 r${candidateRevision(candidate)} · ${Math.round(item.effectiveConfidence * 100)}%${relationNote}`,
+      };
+    });
+
   const counterexamples = approved
-    .filter((candidate) => candidate.polarity === "negative")
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, input.maxCounterexamples ?? 2);
+    .filter((item) => item.candidate.polarity === "negative")
+    .sort((a, b) => b.effectiveConfidence - a.effectiveConfidence || a.candidate.id.localeCompare(b.candidate.id))
+    .slice(0, input.maxCounterexamples ?? 2)
+    .map((item) => item.candidate);
 
   return { experiences, counterexamples };
 }

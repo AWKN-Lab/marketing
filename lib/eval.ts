@@ -34,6 +34,16 @@ function orderRepeatedSamples(group: EvalTaskSample[]) {
   return null;
 }
 
+/**
+ * 重复任务组的时间轨迹。
+ *
+ * improving = 末次优于首次，且中途没有比首次更差（持续改善）
+ * improving-with-regression = 末次优于首次，但中途劣化过（端点差会掩盖）
+ * stable = 末次等于首次
+ * deteriorating = 末次差于首次
+ */
+export type EvalTrajectory = "improving" | "improving-with-regression" | "stable" | "deteriorating";
+
 export function buildP0Metrics(samples: EvalTaskSample[]) {
   const feedbackSamples = samples.filter((item) => item.feedback);
   const outcomeSamples = samples.filter((item) => item.outcome);
@@ -54,13 +64,25 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
       if (!ordered) return [];
       const first = ordered[0];
       const latest = ordered[ordered.length - 1];
+      const editDelta = latest.editCount - first.editCount;
+      // 端点差只看首尾，测不出中途劣化：编辑量 8 → 12 → 3 的序列端点是「改善 5」，
+      // 但中间那次比首次更差 —— 「持续改善」（EVAL-ACCEPTANCE 开篇第 3 条）并不成立。
+      // 峰值是这条序列里最差的一次，用它把中途劣化显式暴露出来。
+      const peakEditCount = ordered.reduce((peak, item) => Math.max(peak, item.editCount), first.editCount);
+      const peakEditDelta = peakEditCount - first.editCount;
+      const trajectory: EvalTrajectory = editDelta < 0
+        ? peakEditDelta <= 0 ? "improving" : "improving-with-regression"
+        : editDelta === 0 ? "stable" : "deteriorating";
       return [{
         workspaceId: first.workspaceId,
         taskType: first.taskType,
         samples: ordered.length,
         firstEditCount: first.editCount,
         latestEditCount: latest.editCount,
-        editDelta: latest.editCount - first.editCount,
+        editDelta,
+        peakEditCount,
+        peakEditDelta,
+        trajectory,
       }];
     });
 
@@ -78,6 +100,17 @@ export function buildP0Metrics(samples: EvalTaskSample[]) {
     averageEditCount: feedbackSamples.length ? totalEdits / feedbackSamples.length : 0,
     repeatedTaskTypes: repeated,
     unknownOrderGroups,
-    improvedTaskTypes: repeated.filter((item) => item.editDelta < 0).length,
+    /**
+     * 持续改善的重复任务类型数 —— 严格口径。
+     *
+     * 要求「末次优于首次」**且**「中途没有比首次更差」，对应 EVAL-ACCEPTANCE
+     * 开篇第 3 条「重复任务中的实际表现**持续**改善」。只有 2 个样本时，
+     * 峰值就是首末两者的较大值，两种口径必然一致。
+     */
+    improvedTaskTypes: repeated.filter((item) => item.trajectory === "improving").length,
+    /** 端点改善（含中途劣化）—— 保留原公式口径，便于对照，不作为对外结论。 */
+    endpointImprovedTaskTypes: repeated.filter((item) => item.editDelta < 0).length,
+    /** 端点改善但中途劣化过 —— 原来会被端点差掩盖的那一类。 */
+    regressedMidwayTaskTypes: repeated.filter((item) => item.trajectory === "improving-with-regression").length,
   };
 }

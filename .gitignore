@@ -1,2 +1,11 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.integration.local
+*.log
+.DS_Store
+
 # TypeScript incremental build artifact
-# TypeScript incremental build info
+tsconfig.tsbuildinfo
