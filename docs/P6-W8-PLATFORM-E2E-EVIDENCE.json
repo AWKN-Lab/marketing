@@ -1,0 +1,227 @@
+{
+  "kind": "P6-W8 platform E2E evidence",
+  "generatedAt": "2026-10-24T01:15:23.013Z",
+  "capabilityUrl": "http://127.0.0.1:8787",
+  "capabilityTokenFingerprint": "sha256:p6-e…",
+  "marketingBaseUrl": "http://127.0.0.1:3111",
+  "sessionFixture": {
+    "url": "http://127.0.0.1:3112",
+    "note": "测试夹具，非产品组件"
+  },
+  "workspaceId": "w-p6-e2e-rmvlpiqdz",
+  "totals": {
+    "cases": 13,
+    "passed": 13,
+    "failed": 0
+  },
+  "results": [
+    {
+      "name": "能力服务把调用方 x-request-id 作为 trace 使用（非 cap-<actor> 兜底）",
+      "passed": true,
+      "detail": {
+        "sent": "trace-p6-e2e-1792804516733",
+        "serverTrace": "trace-p6-e2e-1792804516733"
+      }
+    },
+    {
+      "name": "跨服务 trace：营销层响应 trace_id 等于发出的 request_id",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "trace_id": "req-p6-e2e-trace-001",
+        "request_id": "req-p6-e2e-trace-001",
+        "body": {
+          "ok": true,
+          "data": {
+            "entity_id": "w-p6-e2e-rmvlpiqdz",
+            "revision": 1,
+            "updated_at": "2026-10-24T01:15:16.871Z",
+            "kind": "workspace",
+            "name": "P6-W8 E2E Workspace",
+            "goal": "P6-W8 E2E",
+            "workspace_id": "w-p6-e2e-rmvlpiqdz",
+            "tenant_id": "tenant-p6-e2e",
+            "request_id": "req-p6-e2e-trace-001"
+          },
+          "trace_id": "req-p6-e2e-trace-001"
+        }
+      }
+    },
+    {
+      "name": "跨服务 trace：插件回执里的 request_id 一致",
+      "passed": true,
+      "detail": {
+        "data": {
+          "entity_id": "w-p6-e2e-rmvlpiqdz",
+          "revision": 1,
+          "updated_at": "2026-10-24T01:15:16.871Z",
+          "kind": "workspace",
+          "name": "P6-W8 E2E Workspace",
+          "goal": "P6-W8 E2E",
+          "workspace_id": "w-p6-e2e-rmvlpiqdz",
+          "tenant_id": "tenant-p6-e2e",
+          "request_id": "req-p6-e2e-trace-001"
+        }
+      }
+    },
+    {
+      "name": "创建回执：实体 ID 正确且 revision 起始为 1",
+      "passed": true,
+      "detail": {
+        "data": {
+          "entity_id": "w-p6-e2e-rmvlpiqdz",
+          "revision": 1,
+          "updated_at": "2026-10-24T01:15:16.871Z",
+          "kind": "workspace",
+          "name": "P6-W8 E2E Workspace",
+          "goal": "P6-W8 E2E",
+          "workspace_id": "w-p6-e2e-rmvlpiqdz",
+          "tenant_id": "tenant-p6-e2e",
+          "request_id": "req-p6-e2e-trace-001"
+        },
+        "workspaceId": "w-p6-e2e-rmvlpiqdz"
+      }
+    },
+    {
+      "name": "网络级 exactly-once：同键重放返回同一实体",
+      "passed": true,
+      "detail": {
+        "first": {
+          "ok": true,
+          "data": {
+            "kind": "workspace",
+            "name": "P6-W8 E2E Workspace",
+            "goal": "P6-W8 E2E",
+            "entity_id": "w-p6-e2e-rmvlpiqdz",
+            "workspace_id": "w-p6-e2e-rmvlpiqdz",
+            "tenant_id": "tenant-p6-e2e",
+            "revision": 2,
+            "updated_at": "2026-10-24T01:15:16.894Z",
+            "workspace": {
+              "id": "w-p6-e2e-rmvlpiqdz",
+              "name": "第一次更新",
+              "type": "营销项目",
+              "goal": "P6-W8 E2E"
+            },
+            "base_revision": 1,
+            "request_id": "req-p6-e2e-idem-1"
+          },
+          "trace_id": "req-p6-e2e-idem-1"
+        },
+        "second": {
+          "ok": true,
+          "data": {
+            "entity_id": "w-p6-e2e-rmvlpiqdz",
+            "revision": 2,
+            "updated_at": "2026-10-24T01:15:16.894Z",
+            "kind": "workspace",
+            "name": "P6-W8 E2E Workspace",
+            "goal": "P6-W8 E2E",
+            "workspace_id": "w-p6-e2e-rmvlpiqdz",
+            "tenant_id": "tenant-p6-e2e",
+            "workspace": {
+              "id": "w-p6-e2e-rmvlpiqdz",
+              "name": "第一次更新",
+              "type": "营销项目",
+              "goal": "P6-W8 E2E"
+            },
+            "base_revision": 1,
+            "request_id": "req-p6-e2e-idem-2"
+          },
+          "trace_id": "req-p6-e2e-idem-2"
+        }
+      }
+    },
+    {
+      "name": "网络级 exactly-once：同键重放不推进 revision（无二次副作用）",
+      "passed": true,
+      "detail": {
+        "firstRevision": 2,
+        "secondRevision": 2
+      }
+    },
+    {
+      "name": "网络级 exactly-once：同键重放不改写 updated_at",
+      "passed": true,
+      "detail": {
+        "firstUpdatedAt": "2026-10-24T01:15:16.894Z",
+        "secondUpdatedAt": "2026-10-24T01:15:16.894Z"
+      }
+    },
+    {
+      "name": "CAS 语义跨网络成立：过期 base_revision 被拒",
+      "passed": true,
+      "detail": {
+        "status": 409,
+        "body": {
+          "ok": false,
+          "error": {
+            "code": "REVISION_CONFLICT",
+            "message": "实体 w-p6-e2e-rmvlpiqdz 当前 revision 为 2，请求基于 1。",
+            "retryable": false
+          },
+          "trace_id": "req-p6-e2e-stale"
+        }
+      }
+    },
+    {
+      "name": "观察：撤权后立即写入（产品层 session 缓存窗口内）",
+      "passed": true,
+      "detail": {
+        "note": "这是产品层 5 秒 session 缓存造成的撤权可见性窗口，不是平台侧授权失效",
+        "allowed": true,
+        "error": null
+      }
+    },
+    {
+      "name": "授权在服务端生效：跨过产品层 session 缓存后，撤权写入被拒",
+      "passed": true,
+      "detail": {
+        "status": 403,
+        "body": {
+          "ok": false,
+          "error": {
+            "code": "WORKSPACE_REVOKED",
+            "message": "operation workspace.update 被 capability / Grant 拒绝。",
+            "retryable": false
+          },
+          "trace_id": "req-p6-e2e-revoked"
+        }
+      }
+    },
+    {
+      "name": "幂等键冲突：同键绑不同实体被拒",
+      "passed": true,
+      "detail": {
+        "status": 409,
+        "body": {
+          "ok": false,
+          "error": {
+            "code": "IDEMPOTENCY_CONFLICT",
+            "message": "幂等键 workspace.update:w-p6-e2e-rmvlpiqdz:1:fp-p6-e2e-rmvlpiqdz 已绑定到实体 w-p6-e2e-rmvlpiqdz。",
+            "retryable": false
+          },
+          "trace_id": "req-p6-e2e-keyconf"
+        }
+      }
+    },
+    {
+      "name": "营销层按 Workspace 向平台 Session 服务取身份",
+      "passed": true,
+      "detail": {
+        "count": 3,
+        "sample": "/?workspace_id=w-p6-e2e-rmvlpiqdz"
+      }
+    },
+    {
+      "name": "浏览器身份不被当作授权来源（平台身份来自 Session 头）",
+      "passed": true,
+      "detail": {
+        "sample": {
+          "url": "/?workspace_id=w-p6-e2e-rmvlpiqdz",
+          "authorization": "Bearer p6-e2e-session-token"
+        }
+      }
+    }
+  ]
+}
