@@ -24,6 +24,13 @@ import { detectPatterns, type PatternSample } from "../lib/pattern-detection.ts"
 import { writeFileSync } from "node:fs";
 
 const CAPABILITY_URL = process.env.AWKN_MARKETING_CAPABILITY_URL ?? "";
+/**
+ * 第二个副本的能力服务地址（可选）。
+ *
+ * 两个副本必须**共享同一个状态后端**（同一个 SQLite 文件），
+ * 否则幂等台账各有一份，exactly-once 根本不成立。
+ */
+const REPLICA_URL = process.env.P6_E2E_REPLICA_URL ?? "";
 const CAPABILITY_TOKEN = process.env.AWKN_MARKETING_CAPABILITY_TOKEN ?? "";
 const PORT = Number(process.env.P6_E2E_PORT ?? 3111);
 const SESSION_PORT = Number(process.env.P6_E2E_SESSION_PORT ?? 3112);
@@ -464,6 +471,58 @@ async function main(): Promise<void> {
     asked.every((item) => item.authorization === "Bearer p6-e2e-session-token" || item.authorization === undefined),
     { sample: asked[0] },
   );
+
+  // ── 跨副本 exactly-once：两个副本共享状态后端时，同键只写一次 ──
+  if (REPLICA_URL) {
+    const crossWorkspaceId = `w-p6-e2e-cross-${RUN_ID}`;
+    const crossKey = `workspace.create:${crossWorkspaceId}-${RUN_ID}`;
+    const sessionHeader = Buffer.from(JSON.stringify({
+      tenantId: "tenant-p6-e2e",
+      actorId: "actor-p6-e2e",
+      capabilities: ALL_CAPABILITIES,
+      workspaceGrants: [{ workspaceId: crossWorkspaceId, access: "admin" }],
+      revokedWorkspaceIds: [],
+    }), "utf8").toString("base64url");
+    const invoke = async (base: string) => {
+      const response = await fetch(`${base}/v1/capabilities/invoke`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${CAPABILITY_TOKEN}`,
+          "content-type": "application/json",
+          "x-request-id": `req-cross-${RUN_ID}`,
+          "x-awkn-session": sessionHeader,
+        },
+        body: JSON.stringify({
+          capability: "workspace.create",
+          input: {
+            product: "awkn-marketing",
+            operation: "workspace.create",
+            request_id: `req-cross-${RUN_ID}`,
+            idempotency_key: crossKey,
+            workspace_id: crossWorkspaceId,
+            payload: { workspace: { id: crossWorkspaceId, name: "跨副本探针", type: "probe", goal: "" } },
+          },
+        }),
+      });
+      return (await response.json()) as {
+        ok: boolean;
+        result?: { ok: boolean; output?: { entity_id?: string; revision?: number; updated_at?: string } };
+      };
+    };
+
+    const replicaA = await invoke(CAPABILITY_URL);
+    const replicaB = await invoke(REPLICA_URL);
+    const a = replicaA.result?.output;
+    const b = replicaB.result?.output;
+    check(
+      "跨副本 exactly-once：同键在两个副本上只写一次（第二个是重放）",
+      Boolean(a?.entity_id)
+      && a?.entity_id === b?.entity_id
+      && a?.revision === b?.revision
+      && a?.updated_at === b?.updated_at,
+      { replicaA: a, replicaB: b, key: crossKey },
+    );
+  }
 
   // ── 汇总 ──
   const failed = results.filter((item) => !item.passed);
