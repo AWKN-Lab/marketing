@@ -1,0 +1,236 @@
+import { snapshotFingerprint } from "@/lib/reconcile";
+
+/**
+ * 跨任务重复模式检测。
+ *
+ * 对应 PRD §21.1 的第三类学习源「重复模式」：相似场景反复出现相同修改、相同选择或相同结果。
+ * 单任务 Candidate 只能表达「这一次发生了什么」；本模块负责把多个已确认任务里的
+ * 同向信号聚合成一条可审核的 Pattern Candidate。
+ *
+ * 纪律：
+ * 1. 单个任务永远不会产生模式（最小支持度 PATTERN_MIN_SUPPORT）。
+ * 2. 模式只在同一 Workspace 内成立，不跨 Workspace 泄漏。
+ * 3. 顺序不可靠的任务组不参与检测，不按数组当前顺序猜测先后。
+ * 4. 用户已否决的 Candidate 不参与模式形成。
+ * 5. 重复失败形成反例模式（negative polarity），不得当作可复用方法。
+ */
+
+export const PATTERN_MIN_SUPPORT = 2;
+/** 单次检测的样本上限：模式检测是对整组已确认任务的重算，样本无上限会被用来做资源耗尽。 */
+export const PATTERN_SAMPLE_MAX_TASKS = 200;
+export const PATTERN_MAX_CONFIDENCE = 0.9;
+export const PATTERN_MAX_NEGATIVE_CONFIDENCE = 0.85;
+const MIN_SIGNAL_LENGTH = 6;
+const MAX_SIGNAL_SAMPLE = 3;
+
+export const PATTERN_KINDS = ["repeated-edit", "repeated-outcome", "repeated-failure"] as const;
+export type PatternKind = (typeof PATTERN_KINDS)[number];
+
+export type PatternPolarity = "positive" | "negative";
+
+export type PatternSample = {
+  taskId: string;
+  workspaceId: string;
+  taskType: string;
+  feedback: string | null;
+  outcome: string | null;
+  editCount: number;
+  aiDraft: string;
+  userFinal: string;
+  /** 任务完成时间，用于确定组内先后顺序。 */
+  completedAt?: string;
+  /** 参与模式时必须提供，用于为每个支撑任务保留独立事件链。 */
+  feedbackEventId?: string;
+  outcomeEventId?: string;
+  evidenceRefs?: string[];
+  runId?: string;
+  traceId?: string;
+};
+
+export type PatternSignal = {
+  kind: PatternKind;
+  /** 稳定的模式标识，用于跨会话定位同一模式。 */
+  patternId: string;
+  workspaceId: string;
+  taskType: string;
+  supportCount: number;
+  sourceTaskIds: string[];
+  polarity: PatternPolarity;
+  lesson: string;
+  why: string;
+  scope: string;
+  counterexample: string;
+  confidence: number;
+  /** 重复删除的文本片段（repeated-edit）。 */
+  removedLines: string[];
+  /** 重复出现的 Outcome 值（repeated-outcome / repeated-failure）。 */
+  outcomes: string[];
+  /** 参与该模式的任务时间序（最早 → 最晚）。 */
+  orderedTaskIds: string[];
+};
+
+function normalizeLine(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function signalLines(value: string) {
+  return value
+    .split("\n")
+    .map(normalizeLine)
+    .filter((line) => line.length >= MIN_SIGNAL_LENGTH);
+}
+
+/** 与 artifact-workspace 的 diff 语义保持一致：AI 中存在、用户稿中不存在的行为「删除」。 */
+export function patternRemovedLines(aiDraft: string, userFinal: string) {
+  const aiLines = signalLines(aiDraft);
+  const finalLines = new Set(signalLines(userFinal));
+  return Array.from(new Set(aiLines.filter((line) => !finalLines.has(line))));
+}
+
+function groupKey(sample: PatternSample) {
+  return `${sample.workspaceId}\u0000${sample.taskType}`;
+}
+
+/** 组内按完成时间升序；时间不可解析的样本整组不参与检测。 */
+function orderSamples(samples: PatternSample[]) {
+  const withTime = samples.map((sample) => ({ sample, time: sample.completedAt ? Date.parse(sample.completedAt) : Number.NaN }));
+  if (!withTime.every(({ time }) => Number.isFinite(time))) return null;
+  return withTime
+    .sort((a, b) => a.time - b.time || a.sample.taskId.localeCompare(b.sample.taskId))
+    .map(({ sample }) => sample);
+}
+
+function patternIdOf(input: { kind: PatternKind; workspaceId: string; taskType: string; signal: string }) {
+  return `ptn-${snapshotFingerprint({
+    kind: input.kind,
+    workspace_id: input.workspaceId,
+    task_type: input.taskType,
+    signal: input.signal,
+  })}`;
+}
+
+function confidenceFor(supportCount: number, negative: boolean) {
+  const base = negative ? 0.6 : 0.62;
+  const step = negative ? 0.07 : 0.08;
+  const cap = negative ? PATTERN_MAX_NEGATIVE_CONFIDENCE : PATTERN_MAX_CONFIDENCE;
+  return Math.min(cap, base + step * Math.max(0, supportCount - 1));
+}
+
+function repeatedRemovalSignal(samples: PatternSample[]) {
+  const counter = new Map<string, { count: number; taskIds: string[] }>();
+  for (const sample of samples) {
+    for (const line of patternRemovedLines(sample.aiDraft, sample.userFinal)) {
+      const entry = counter.get(line) ?? { count: 0, taskIds: [] };
+      entry.count += 1;
+      entry.taskIds.push(sample.taskId);
+      counter.set(line, entry);
+    }
+  }
+  const repeated = [...counter.entries()]
+    .filter(([, entry]) => entry.count >= PATTERN_MIN_SUPPORT)
+    .sort((a, b) => b[1].count - a[1].count || b[0].length - a[0].length);
+  if (!repeated.length) return null;
+  const [line, entry] = repeated[0];
+  const extra = repeated.length - 1;
+  return {
+    line,
+    taskIds: entry.taskIds,
+    count: entry.count,
+    extra,
+  };
+}
+
+/**
+ * 从一组同 Workspace、同 taskType 的任务样本中检测重复模式。
+ *
+ * 只返回满足最小支持度的模式；调用方负责把结果提升为可审核的 Candidate。
+ */
+export function detectPatterns(samples: readonly PatternSample[]): PatternSignal[] {
+  const groups = new Map<string, PatternSample[]>();
+  for (const sample of samples) {
+    if (!sample.taskId || !sample.workspaceId || !sample.taskType) continue;
+    const key = groupKey(sample);
+    const group = groups.get(key) ?? [];
+    group.push(sample);
+    groups.set(key, group);
+  }
+
+  const patterns: PatternSignal[] = [];
+
+  for (const group of groups.values()) {
+    if (group.length < PATTERN_MIN_SUPPORT) continue;
+    const ordered = orderSamples(group);
+    // 顺序不可靠的组不参与检测，避免用数组当前顺序猜测时间先后。
+    if (!ordered) continue;
+
+    const removal = repeatedRemovalSignal(ordered);
+    if (removal) {
+      const kind: PatternKind = "repeated-edit";
+      const patternId = patternIdOf({ kind, workspaceId: group[0].workspaceId, taskType: group[0].taskType, signal: removal.line });
+      const sample = removal.line.length > 48 ? `${removal.line.slice(0, 48)}…` : removal.line;
+      patterns.push({
+        kind,
+        patternId,
+        workspaceId: group[0].workspaceId,
+        taskType: group[0].taskType,
+        supportCount: removal.count,
+        sourceTaskIds: removal.taskIds,
+        polarity: "positive",
+        lesson: `在“${group[0].taskType}”类任务中，用户已连续 ${removal.count} 次删除“${sample}”。同类任务应直接避免这段表达。`,
+        why: `同一 Workspace 的 ${removal.count} 个“${group[0].taskType}”任务中，AI 初稿里的同一段表达都被用户删除。${removal.extra ? `另有 ${removal.extra} 段重复删除内容。` : ""}重复删除是同向信号，单次删除不构成模式。`,
+        scope: `${group[0].taskType} / 相似目标`,
+        counterexample: "任务类型、目标、受众、交付形式或业务阶段显著变化时重新验证",
+        confidence: confidenceFor(removal.count, false),
+        removedLines: [removal.line],
+        outcomes: [],
+        orderedTaskIds: ordered.map((item) => item.taskId),
+      });
+    }
+
+    const outcomeCounter = new Map<string, string[]>();
+    for (const item of ordered) {
+      const outcome = item.outcome?.trim();
+      if (!outcome) continue;
+      const taskIds = outcomeCounter.get(outcome) ?? [];
+      taskIds.push(item.taskId);
+      outcomeCounter.set(outcome, taskIds);
+    }
+    for (const [outcome, taskIds] of outcomeCounter) {
+      if (taskIds.length < PATTERN_MIN_SUPPORT) continue;
+      const negative = outcome === "失败";
+      const kind: PatternKind = negative ? "repeated-failure" : "repeated-outcome";
+      const patternId = patternIdOf({ kind, workspaceId: group[0].workspaceId, taskType: group[0].taskType, signal: outcome });
+      patterns.push({
+        kind,
+        patternId,
+        workspaceId: group[0].workspaceId,
+        taskType: group[0].taskType,
+        supportCount: taskIds.length,
+        sourceTaskIds: taskIds,
+        polarity: negative ? "negative" : "positive",
+        lesson: negative
+          ? `“${group[0].taskType}”类任务已 ${taskIds.length} 次落到“${outcome}”。相似任务先检查同类失败原因，禁止直接复用本次做法。`
+          : `“${group[0].taskType}”类任务连续 ${taskIds.length} 次得到“${outcome}”。同类任务可优先沿用该路径，并结合新场景校验。`,
+        why: `同一 Workspace 的 ${taskIds.length} 个“${group[0].taskType}”任务记录到相同 Outcome“${outcome}”。${negative ? "重复失败构成反例，不进入可复用方法。" : "重复结果是可复用的同向信号。"}`,
+        scope: `${group[0].taskType} / 相似目标`,
+        counterexample: "任务类型、目标、受众、交付形式或业务阶段显著变化时重新验证",
+        confidence: confidenceFor(taskIds.length, negative),
+        removedLines: [],
+        outcomes: [outcome],
+        orderedTaskIds: ordered.map((item) => item.taskId),
+      });
+    }
+  }
+
+  return patterns.sort((a, b) => b.confidence - a.confidence || a.patternId.localeCompare(b.patternId));
+}
+
+/** 供 UI 展示的模式摘要。 */
+export function patternSummary(pattern: PatternSignal) {
+  return `${pattern.kind} · ${pattern.supportCount} 次支持 · ${pattern.taskType}`;
+}
+
+/** 供调试与测试使用的信号片段。 */
+export function patternSignalSamples(pattern: PatternSignal, limit = MAX_SIGNAL_SAMPLE) {
+  return pattern.sourceTaskIds.slice(0, limit);
+}

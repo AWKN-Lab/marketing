@@ -1,27 +1,12 @@
 import assert from "node:assert/strict";
 import { POST as productRoute } from "../app/api/product/route.ts";
 import { assertP6FaultMatrixRecord } from "./p6-failure-support.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withUpstream } from "./p6-test-support.ts";
 
 const NOW = "2026-09-05T08:40:00.000Z";
 const WORKSPACE_ID = "w-p6-malformed-success";
 const MATERIAL_ID = "material-p6-malformed-success";
 
-type Responder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withUpstream<T>(responder: Responder, run: () => Promise<T>) {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://integration.invalid";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function request(requestId: string) {
   return new Request("http://localhost/api/product", {

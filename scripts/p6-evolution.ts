@@ -16,31 +16,12 @@ import {
   type LocalEvolutionCandidate,
 } from "../lib/evolution-store.ts";
 import { filterReadableWorkspaceItems, type MarketingSession } from "../lib/product-session.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withProductUpstream } from "./p6-test-support.ts";
 
 const NOW = "2026-09-05T06:45:00.000Z";
 const WORKSPACE_ID = "w-p6-evolution";
 const TASK_ID = "task-p6-evolution";
 
-type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withProductUpstream<T>(responder: UpstreamResponder, run: () => Promise<T>): Promise<T> {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousToken = process.env.AWKN_MARKETING_API_TOKEN;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://product.integration.invalid";
-  process.env.AWKN_MARKETING_API_TOKEN = "service-secret";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    if (typeof previousToken === "undefined") delete process.env.AWKN_MARKETING_API_TOKEN;
-    else process.env.AWKN_MARKETING_API_TOKEN = previousToken;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function candidate(overrides: {
   taskId?: string;
@@ -277,7 +258,7 @@ async function main() {
       actor: { id: "actor-1", name: "Actor" },
       roles: [],
       capabilities: ["workspace.read", "evolution.review"],
-      workspaceGrants: [],
+      workspaceGrants: [], revokedWorkspaceIds: [],
       teamEnabled: true,
     };
     const visible = filterReadableWorkspaceItems(session, [item], (candidateItem) => candidateItem.workspaceId ?? "");

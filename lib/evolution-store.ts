@@ -1,10 +1,14 @@
 import {
   evolutionCandidateId,
+  evolutionPatternCandidateId,
   evolutionReviewId,
   isEvolutionReviewDecision,
   type EvolutionCandidateEvidenceChain,
   type EvolutionReviewDecision,
+  type PatternSupportingChain,
 } from "@/lib/evolution-contract";
+import { PATTERN_MIN_SUPPORT, detectPatterns, type PatternSample, type PatternSignal } from "@/lib/pattern-detection";
+import { matchTaskType } from "@/lib/task-affinity";
 import type { AppliedExperience, EvolutionCandidate } from "@/lib/types";
 
 export type LocalEvolutionCandidate = EvolutionCandidate & {
@@ -134,7 +138,7 @@ export function createExperienceCandidate(input: {
 
 export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandidate) {
   const evidence = candidate.evidence;
-  return Boolean(
+  const baseReady = Boolean(
     candidate.workspaceId
     && candidate.taskId
     && candidate.fingerprint
@@ -145,6 +149,89 @@ export function evolutionCandidateReadyForReview(candidate: LocalEvolutionCandid
     && evidence.feedback_event_id.startsWith(`feedback-event:${candidate.taskId}:`)
     && evidence.outcome_event_id.startsWith(`outcome-event:${candidate.taskId}:`),
   );
+  if (!baseReady) return false;
+  if (!evidence?.pattern_evidence) return true;
+  // Pattern Candidate 额外要求：跨任务支撑证据链完整，且每个支撑任务都有独立事件链。
+  const pattern = evidence.pattern_evidence;
+  return Boolean(
+    pattern.support_count >= PATTERN_MIN_SUPPORT
+    && pattern.source_task_ids.length >= PATTERN_MIN_SUPPORT
+    && pattern.supporting_chains.length >= PATTERN_MIN_SUPPORT
+    && pattern.source_task_ids.includes(candidate.taskId)
+    && pattern.supporting_chains.every((chain) => chain.task_id
+      && chain.feedback_event_id.startsWith(`feedback-event:${chain.task_id}:`)
+      && chain.outcome_event_id.startsWith(`outcome-event:${chain.task_id}:`)),
+  );
+}
+
+export function createPatternCandidate(input: {
+  pattern: PatternSignal;
+  anchorTaskId: string;
+  anchor: {
+    aiDraft: string;
+    userFinal: string;
+    feedbackEventId: string;
+    outcomeEventId: string;
+    evidenceRefs?: string[];
+    runId?: string;
+    traceId?: string;
+  };
+  supportingChains: PatternSupportingChain[];
+  previousCandidate?: LocalEvolutionCandidate;
+}): LocalEvolutionCandidate {
+  const { pattern } = input;
+  const id = evolutionPatternCandidateId(pattern.patternId);
+  const previous = input.previousCandidate?.id === id ? input.previousCandidate : undefined;
+  const fingerprint = JSON.stringify([
+    pattern.kind,
+    pattern.patternId,
+    pattern.supportCount,
+    [...pattern.sourceTaskIds].sort(),
+    input.supportingChains.map((chain) => chain.task_id).sort(),
+  ]);
+  const sameCandidate = Boolean(previous && previous.fingerprint === fingerprint);
+  const previousRevision = previous ? candidateRevision(previous) : 0;
+  const revision = sameCandidate ? previousRevision : previousRevision + 1;
+
+  const type = pattern.kind === "repeated-failure"
+    ? "Counterexample Candidate"
+    : pattern.kind === "repeated-edit"
+      ? "Preference Candidate"
+      : "Decision Pattern Candidate";
+
+  return {
+    id,
+    taskId: input.anchorTaskId,
+    workspaceId: pattern.workspaceId,
+    sourceTaskType: pattern.taskType,
+    polarity: pattern.polarity,
+    fingerprint,
+    revision: Math.max(1, revision),
+    createdAt: sameCandidate && previous ? previous.createdAt : new Date().toISOString(),
+    type,
+    lesson: pattern.lesson,
+    why: pattern.why,
+    source: `${pattern.sourceTaskIds.join(" / ")} · 跨任务重复模式 · ${pattern.supportCount} 次支持`,
+    scope: pattern.scope,
+    counterexample: pattern.counterexample,
+    confidence: pattern.confidence,
+    evidence: {
+      ai_draft: input.anchor.aiDraft,
+      user_final: input.anchor.userFinal,
+      feedback_event_id: input.anchor.feedbackEventId,
+      outcome_event_id: input.anchor.outcomeEventId,
+      evidence_refs: normalizeEvidenceRefs(input.anchor.evidenceRefs ?? []),
+      run_id: input.anchor.runId?.trim() || undefined,
+      trace_id: input.anchor.traceId?.trim() || undefined,
+      pattern_evidence: {
+        kind: pattern.kind,
+        signal: pattern.kind === "repeated-edit" ? pattern.removedLines[0] ?? "" : pattern.outcomes[0] ?? "",
+        support_count: pattern.supportCount,
+        source_task_ids: [...pattern.sourceTaskIds],
+        supporting_chains: input.supportingChains,
+      },
+    },
+  };
 }
 
 export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefined, candidate: LocalEvolutionCandidate): EvolutionReviewDecision | null {
@@ -158,6 +245,56 @@ export function reviewDecisionForCandidate(review: EvolutionReviewValue | undefi
   return isEvolutionReviewDecision(review.decision) ? review.decision : null;
 }
 
+/**
+ * 参与模式形成的样本过滤。
+ *
+ * 参与模式时必须提供独立事件链（feedback / outcome），否则支撑任务无法回溯证据。
+ * **平台路径与本地路径必须用同一个过滤器** —— 否则平台会检测到本地看不到的模式，
+ * 两层就出现了语义漂移。
+ */
+export function patternEligibleSamples(samples: readonly PatternSample[]): PatternSample[] {
+  return samples.filter((sample) => sample.feedbackEventId && sample.outcomeEventId);
+}
+
+export function buildPatternCandidates(input: {
+  samples: PatternSample[];
+  previous?: LocalEvolutionCandidate[];
+  /** 平台已算好的模式。传入时用平台结果，不传则本地计算（离线回退）。 */
+  patterns?: PatternSignal[];
+}): LocalEvolutionCandidate[] {
+  const samples = patternEligibleSamples(input.samples);
+  const patterns = input.patterns ?? detectPatterns(samples);
+  return patterns.map((pattern) => {
+    const anchorTaskId = pattern.sourceTaskIds[pattern.sourceTaskIds.length - 1];
+    const anchor = samples.find((sample) => sample.taskId === anchorTaskId);
+    if (!anchor) return null;
+    const supportingChains = pattern.sourceTaskIds.map((taskId) => {
+      const sample = samples.find((item) => item.taskId === taskId);
+      return {
+        task_id: taskId,
+        feedback_event_id: sample?.feedbackEventId ?? "",
+        outcome_event_id: sample?.outcomeEventId ?? "",
+      };
+    });
+    const id = evolutionPatternCandidateId(pattern.patternId);
+    return createPatternCandidate({
+      pattern,
+      anchorTaskId,
+      anchor: {
+        aiDraft: anchor.aiDraft,
+        userFinal: anchor.userFinal,
+        feedbackEventId: anchor.feedbackEventId ?? "",
+        outcomeEventId: anchor.outcomeEventId ?? "",
+        evidenceRefs: anchor.evidenceRefs,
+        runId: anchor.runId,
+        traceId: anchor.traceId,
+      },
+      supportingChains,
+      previousCandidate: input.previous?.find((candidate) => candidate.id === id),
+    });
+  }).filter((candidate): candidate is LocalEvolutionCandidate => candidate !== null);
+}
+
 export function matchReviewedExperience(input: {
   candidates: LocalEvolutionCandidate[];
   reviews: Record<string, EvolutionReviewValue>;
@@ -168,30 +305,45 @@ export function matchReviewedExperience(input: {
 }): { experiences: AppliedExperience[]; counterexamples: LocalEvolutionCandidate[] } {
   const approved = input.candidates
     .filter(evolutionCandidateReadyForReview)
-    .filter((candidate) => candidate.sourceTaskType === input.taskType)
-    .filter((candidate) => {
+    .flatMap((candidate) => {
+      // PRD §21.1 C 与验收第 10 条要求「相似任务」能被再次匹配，因此不能只做 taskType 全等。
+      // 同类型直接命中；跨类型只认显式的 1 跳亲缘边，并按边权降权。
+      const relation = matchTaskType(candidate.sourceTaskType ?? "", input.taskType);
+      if (!relation) return [];
       const review = input.reviews[candidate.id];
       const decision = reviewDecisionForCandidate(review, candidate);
-      if (decision === "accepted") return true;
-      if (decision !== "scoped") return false;
-      if (typeof review === "object" && review.scopeWorkspaceId) return review.scopeWorkspaceId === input.workspaceId;
-      return candidate.workspaceId === input.workspaceId;
-    });
-
-  const experiences = approved
-    .filter((candidate) => candidate.polarity !== "negative")
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, input.maxExperiences ?? 3)
-    .map((candidate) => ({
-      id: candidate.id,
-      lesson: candidate.lesson,
-      source: `${candidate.source} · 已审核 r${candidateRevision(candidate)} · ${Math.round(candidate.confidence * 100)}%`,
+      if (decision === "accepted") return [{ candidate, relation }];
+      if (decision !== "scoped") return [];
+      if (typeof review === "object" && review.scopeWorkspaceId) {
+        return review.scopeWorkspaceId === input.workspaceId ? [{ candidate, relation }] : [];
+      }
+      return candidate.workspaceId === input.workspaceId ? [{ candidate, relation }] : [];
+    })
+    .map((item) => ({
+      candidate: item.candidate,
+      relation: item.relation,
+      effectiveConfidence: item.candidate.confidence * item.relation.weight,
     }));
 
+  const experiences = approved
+    .filter((item) => item.candidate.polarity !== "negative")
+    .sort((a, b) => b.effectiveConfidence - a.effectiveConfidence || a.candidate.id.localeCompare(b.candidate.id))
+    .slice(0, input.maxExperiences ?? 3)
+    .map((item) => {
+      const candidate = item.candidate;
+      const relationNote = item.relation.relation === "related" ? ` · 跨类型推断（来自「${item.relation.sourceTaskType}」）` : "";
+      return {
+        id: candidate.id,
+        lesson: candidate.lesson,
+        source: `${candidate.source} · 已审核 r${candidateRevision(candidate)} · ${Math.round(item.effectiveConfidence * 100)}%${relationNote}`,
+      };
+    });
+
   const counterexamples = approved
-    .filter((candidate) => candidate.polarity === "negative")
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, input.maxCounterexamples ?? 2);
+    .filter((item) => item.candidate.polarity === "negative")
+    .sort((a, b) => b.effectiveConfidence - a.effectiveConfidence || a.candidate.id.localeCompare(b.candidate.id))
+    .slice(0, input.maxCounterexamples ?? 2)
+    .map((item) => item.candidate);
 
   return { experiences, counterexamples };
 }

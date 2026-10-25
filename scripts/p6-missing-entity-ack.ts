@@ -6,7 +6,7 @@ import {
 } from "../lib/product-contract.ts";
 import { workspaceUpdateIdempotencyKey } from "../lib/workspace-contract.ts";
 import { assertP6FaultMatrixRecord } from "./p6-failure-support.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withUpstream } from "./p6-test-support.ts";
 
 const NOW = "2026-09-05T09:05:00.000Z";
 const WORKSPACE_ID = "w-p6-missing-ack";
@@ -25,21 +25,6 @@ const WORKSPACE = {
 };
 const KEY = workspaceUpdateIdempotencyKey(WORKSPACE_ID, BASE_REVISION, "fp-missing-ack");
 
-type Responder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withUpstream<T>(responder: Responder, run: () => Promise<T>) {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://integration.invalid";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function requestBody(requestId: string) {
   return {

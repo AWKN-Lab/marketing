@@ -7,31 +7,14 @@ import {
   validateMaterialProductRequest,
 } from "../lib/material-contract.ts";
 import { normalizeMaterialUploadAck, type MaterialUploadAck } from "../lib/material-upload.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withProductUpstream } from "./p6-test-support.ts";
+
+type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 const NOW = "2026-09-05T03:00:00.000Z";
 const WORKSPACE_ID = "w-p6-material";
 const MATERIAL_ID = "material-p6-contract";
 
-type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withProductUpstream<T>(responder: UpstreamResponder, run: () => Promise<T>): Promise<T> {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousToken = process.env.AWKN_MARKETING_API_TOKEN;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://product.integration.invalid";
-  process.env.AWKN_MARKETING_API_TOKEN = "service-secret";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    if (typeof previousToken === "undefined") delete process.env.AWKN_MARKETING_API_TOKEN;
-    else process.env.AWKN_MARKETING_API_TOKEN = previousToken;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 async function withMaterialUpstream<T>(responder: UpstreamResponder, run: () => Promise<T>): Promise<T> {
   const previousEndpoint = process.env.AWKN_MARKETING_MATERIAL_UPLOAD_URL;

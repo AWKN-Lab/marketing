@@ -4,6 +4,27 @@ import { snapshotFingerprint } from "@/lib/reconcile";
 export const EVOLUTION_REVIEW_DECISIONS = ["accepted", "scoped", "rejected"] as const;
 export type EvolutionReviewDecision = (typeof EVOLUTION_REVIEW_DECISIONS)[number];
 
+/** 跨任务重复模式 Candidate 使用的类型。 */
+export const EVOLUTION_PATTERN_CANDIDATE_TYPES = ["Preference Candidate", "Decision Pattern Candidate"] as const;
+export type EvolutionPatternCandidateType = (typeof EVOLUTION_PATTERN_CANDIDATE_TYPES)[number];
+
+export const PATTERN_CANDIDATE_ID_PREFIX = "local-evp-";
+export const PATTERN_MIN_SUPPORT = 2;
+
+export type PatternSupportingChain = {
+  task_id: string;
+  feedback_event_id: string;
+  outcome_event_id: string;
+};
+
+export type PatternEvidenceChain = {
+  kind: string;
+  signal: string;
+  support_count: number;
+  source_task_ids: string[];
+  supporting_chains: PatternSupportingChain[];
+};
+
 export type EvolutionCandidateEvidenceChain = {
   ai_draft: string;
   user_final: string;
@@ -12,6 +33,8 @@ export type EvolutionCandidateEvidenceChain = {
   evidence_refs: string[];
   run_id?: string;
   trace_id?: string;
+  /** 仅 Pattern Candidate 存在：跨任务模式的支撑证据链。 */
+  pattern_evidence?: PatternEvidenceChain;
 };
 
 export type EvolutionReviewScope =
@@ -71,6 +94,14 @@ export function evolutionCandidateId(taskId: string) {
   return `local-ev-${taskId}`;
 }
 
+export function evolutionPatternCandidateId(patternId: string) {
+  return `${PATTERN_CANDIDATE_ID_PREFIX}${patternId}`;
+}
+
+export function isPatternCandidateType(value: unknown): value is EvolutionPatternCandidateType {
+  return typeof value === "string" && (EVOLUTION_PATTERN_CANDIDATE_TYPES as readonly string[]).includes(value);
+}
+
 export function evolutionReviewId(candidateId: string) {
   return `evolution-review:${candidateId}`;
 }
@@ -112,9 +143,68 @@ export function evolutionReviewIdempotencyKey(review: EvolutionReviewRecord, bas
   })}`;
 }
 
+function validatePatternEvidence(evidence: Record<string, unknown>, anchorTaskId: string): EvolutionContractViolation | null {
+  const pattern = record(evidence.pattern_evidence);
+  if (!pattern) return { code: "VALIDATION_ERROR", message: "Pattern Candidate 必须携带 pattern_evidence。" };
+  const supportCount = pattern.support_count;
+  if (!positiveRevision(supportCount) || supportCount < PATTERN_MIN_SUPPORT) {
+    return { code: "VALIDATION_ERROR", message: `Pattern Candidate 至少需要 ${PATTERN_MIN_SUPPORT} 个支撑任务。` };
+  }
+  const sourceTaskIds = pattern.source_task_ids;
+  if (!Array.isArray(sourceTaskIds) || sourceTaskIds.length < PATTERN_MIN_SUPPORT) {
+    return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的 source_task_ids 不完整。" };
+  }
+  const taskIds = sourceTaskIds.map((item) => text(item));
+  if (taskIds.some((item) => !item)) {
+    return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的 source_task_ids 含空值。" };
+  }
+  if (new Set(taskIds).size !== taskIds.length) {
+    return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的 source_task_ids 必须去重。" };
+  }
+  if (!taskIds.includes(anchorTaskId)) {
+    return { code: "IDENTITY_MISMATCH", message: "Pattern Candidate 的锚点任务必须包含在 source_task_ids 中。" };
+  }
+  const chains = pattern.supporting_chains;
+  if (!Array.isArray(chains) || chains.length < PATTERN_MIN_SUPPORT) {
+    return { code: "VALIDATION_ERROR", message: "Pattern Candidate 缺少支撑任务的证据链。" };
+  }
+  const seen = new Set<string>();
+  for (const chain of chains) {
+    const row = record(chain);
+    const chainTaskId = text(row?.task_id);
+    const feedbackEventId = text(row?.feedback_event_id);
+    const outcomeEventId = text(row?.outcome_event_id);
+    if (!chainTaskId || !feedbackEventId || !outcomeEventId) {
+      return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的支撑证据链不完整。" };
+    }
+    if (!taskIds.includes(chainTaskId)) {
+      return { code: "IDENTITY_MISMATCH", message: "Pattern Candidate 的支撑证据链引用了未知任务。" };
+    }
+    if (seen.has(chainTaskId)) {
+      return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的支撑证据链存在重复任务。" };
+    }
+    seen.add(chainTaskId);
+    if (!feedbackEventId.startsWith(`feedback-event:${chainTaskId}:`)) {
+      return { code: "IDENTITY_MISMATCH", message: "Pattern Candidate 支撑任务的 Feedback Event identity 无效。" };
+    }
+    if (!outcomeEventId.startsWith(`outcome-event:${chainTaskId}:`)) {
+      return { code: "IDENTITY_MISMATCH", message: "Pattern Candidate 支撑任务的 Outcome Event identity 无效。" };
+    }
+  }
+  if (seen.size !== taskIds.length) {
+    return { code: "VALIDATION_ERROR", message: "Pattern Candidate 的每个支撑任务都必须有独立证据链。" };
+  }
+  return null;
+}
+
 function validateCandidate(candidate: Record<string, unknown>, workspaceId: string, taskId: string): EvolutionContractViolation | null {
   const candidateId = text(candidate.id);
-  if (candidateId !== evolutionCandidateId(taskId)) {
+  const patternCandidate = Boolean(record(candidate.evidence)?.pattern_evidence) || isPatternCandidateType(candidate.type);
+  if (patternCandidate) {
+    if (!candidateId.startsWith(PATTERN_CANDIDATE_ID_PREFIX)) {
+      return { code: "IDENTITY_MISMATCH", message: "Pattern Candidate ID 必须使用 local-evp- 前缀。" };
+    }
+  } else if (candidateId !== evolutionCandidateId(taskId)) {
     return { code: "IDENTITY_MISMATCH", message: "Evolution Candidate ID 与稳定 Task identity 不一致。" };
   }
   if (text(candidate.taskId) !== taskId || text(candidate.workspaceId) !== workspaceId) {
@@ -129,7 +219,7 @@ function validateCandidate(candidate: Record<string, unknown>, workspaceId: stri
   if (candidate.polarity !== "positive" && candidate.polarity !== "caution" && candidate.polarity !== "negative") {
     return { code: "VALIDATION_ERROR", message: "Evolution Candidate polarity 无效。" };
   }
-  if (candidate.type !== "Experience Candidate" && candidate.type !== "Counterexample Candidate") {
+  if (candidate.type !== "Experience Candidate" && candidate.type !== "Counterexample Candidate" && !patternCandidate) {
     return { code: "VALIDATION_ERROR", message: "Evolution Candidate type 无效。" };
   }
   if (candidate.polarity === "negative" && candidate.type !== "Counterexample Candidate") {
@@ -161,6 +251,10 @@ function validateCandidate(candidate: Record<string, unknown>, workspaceId: stri
   }
   if (typeof evidence.trace_id !== "undefined" && !text(evidence.trace_id)) {
     return { code: "VALIDATION_ERROR", message: "Evolution Candidate trace_id 必须是非空字符串。" };
+  }
+  if (patternCandidate) {
+    const patternViolation = validatePatternEvidence(evidence, taskId);
+    if (patternViolation) return patternViolation;
   }
   return null;
 }

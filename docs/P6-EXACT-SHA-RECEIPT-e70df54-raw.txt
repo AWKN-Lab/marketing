@@ -1,0 +1,466 @@
+EXACT-SHA RUN LOG
+SHA: e70df545092662dda6d07128f6ab04e9eda10620
+TREE: 55180a73bddbee2727738c0607d3fb19c128a78e
+BRANCH: feature/capability-server-integration
+NODE: v22.19.0
+NPM: 10.9.3
+STARTED: 2026-10-24T08:38:01+08:00
+DIRTY_BEFORE: 0 files
+════════════════════════════════════
+───── typecheck ─────
+$ npx tsc --noEmit
+EXIT_CODE: 0
+DURATION_SEC: 44
+
+───── test:p0 ─────
+$ npm run test:p0
+
+> awkn-marketing@0.1.0 test:p0
+> tsx scripts/p0-acceptance.ts
+
+P0 acceptance passed: revoked experiences are excluded, grant-aware visibility and scoped product boundaries are enforced.
+EXIT_CODE: 0
+DURATION_SEC: 1
+
+───── test:p6 ─────
+$ npm run test:p6
+
+> awkn-marketing@0.1.0 test:p6
+> npm run test:p6:contract && npm run test:p6:permission && npm run test:p6:idempotency && npm run test:p6:revision && npm run test:p6:revision-w7-02 && npm run test:p6:revision-w7-03 && npm run test:p6:concurrent-update && npm run test:p6:stale-retry && npm run test:p6:request-timeout && npm run test:p6:upstream-5xx && npm run test:p6:rate-limit && npm run test:p6:malformed-json && npm run test:p6:adapter-http-failure && npm run test:p6:malformed-success && npm run test:p6:missing-entity-ack && npm run test:p6:identity-mismatch && npm run test:p6:duplicate-submit && npm run test:p6:duplicate-retry && npm run test:p6:active-session-revoke && npm run test:p6:dependency-unavailable && npm run test:p6:dependency-unavailable-learning && npm run test:p6:workspace && npm run test:p6:material && npm run test:p6:task && npm run test:p6:task-execution && npm run test:p6:task-execution-projection && npm run test:p6:agent && npm run test:p6:feedback && npm run test:p6:outcome && npm run test:p6:learning && npm run test:p6:evolution && npm run test:p6:integration && npm run test:p6:ci-guard
+
+
+> awkn-marketing@0.1.0 test:p6:contract
+> tsx scripts/p6-contract.ts
+
+[P6][PASS] product operation registry remains 19 unique operations with complete metadata
+[P6][PASS] all 19 operations accept their valid request contract
+[P6][PASS] metadata-required ids and idempotency are enforced table-wide
+[P6][PASS] all 19 operations accept their declared response contract
+[P6][PASS] persistent entity ack requires stable identity, revision and updated_at
+[P6][PASS] unknown operation is a stable UNSUPPORTED_OPERATION violation
+[P6][PASS] error taxonomy is stable, unique and preserved from upstream
+[P6][PASS] malformed upstream envelopes normalize without losing fallback trace
+[P6][PASS] async response contract requires run identity and stable status
+
+> awkn-marketing@0.1.0 test:p6:permission
+> tsx scripts/p6-permission.ts
+
+[P6][PASS] session requires tenant and actor identity
+[P6][PASS] session rejects capability values outside the whitelist
+[P6][PASS] session rejects invalid or ambiguous workspace grants
+[P6][PASS] session rejects unknown mode and malformed team flag
+[P6][PASS] permission matrix workspace.read w-read
+[P6][PASS] permission matrix workspace.write w-write
+[P6][PASS] permission matrix workspace.write w-read
+[P6][PASS] permission matrix material.write w-write
+[P6][PASS] permission matrix task.create w-write
+[P6][PASS] permission matrix task.run w-write
+[P6][PASS] permission matrix feedback.write w-write
+[P6][PASS] permission matrix outcome.write w-write
+[P6][PASS] permission matrix evolution.review w-write
+[P6][PASS] permission matrix learning.manage w-write
+[P6][PASS] permission matrix workspace.create tenant
+[P6][PASS] permission matrix team.manage tenant
+[P6][PASS] missing capability prevents side effects even with write grant
+[P6][PASS] revoked workspace is removed from visible cached projection
+[P6][PASS] revoked workspace candidate cannot enter experience matching
+[P6][PASS] tenant and actor storage scopes cannot read each other cache
+[P6][PASS] server upstream preserves actor identity while using service auth
+[P6][PASS] session HTTP statuses map to stable errors
+[P6][PASS] session route returns a validated platform session
+[P6][PASS] session route normalizes 401 and preserves trace
+[P6][PASS] session route normalizes 403
+[P6][PASS] configured platform session never falls back to local owner
+[P6][PASS] invalid upstream capability and local-mode identities fail closed
+
+> awkn-marketing@0.1.0 test:p6:idempotency
+> tsx scripts/p6-idempotency.ts
+
+[P6][PASS] product client forwards caller idempotency key
+[P6][PASS] sync adapter preserves logical idempotency key
+
+> awkn-marketing@0.1.0 test:p6:revision
+> tsx scripts/p6-revision.ts
+
+[P6][PASS] newer platform revision is detected
+[P6][PASS] stale platform revision is never treated as clean
+[P6][PASS] entity read rejects cross-identity snapshot
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"clean","actualState":"clean","errorCode":null,"retryable":null,"requestId":"w7-01-equal-clean","idempotencyKey":null,"traceId":null,"sideEffectCount":0,"finalRevision":3,"finalConsistency":"local-platform-baseline-match"}
+[P6][PASS] W7-01 equal local/server revision is clean when snapshots match
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"local-newer","actualState":"local-newer","errorCode":null,"retryable":null,"requestId":"w7-01-equal-local-newer","idempotencyKey":null,"traceId":null,"sideEffectCount":0,"finalRevision":3,"finalConsistency":"local-change-preserved"}
+[P6][PASS] W7-01 equal revision preserves local-newer fingerprint state
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"platform-newer","actualState":"platform-newer","errorCode":null,"retryable":null,"requestId":"w7-01-equal-platform-drift","idempotencyKey":null,"traceId":null,"sideEffectCount":0,"finalRevision":3,"finalConsistency":"platform-drift-visible"}
+[P6][PASS] W7-01 equal revision preserves platform fingerprint drift
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"conflict","actualState":"conflict","errorCode":null,"retryable":null,"requestId":"w7-01-equal-conflict","idempotencyKey":null,"traceId":null,"sideEffectCount":0,"finalRevision":3,"finalConsistency":"manual-reconcile-required"}
+[P6][PASS] W7-01 equal revision preserves conflict when both snapshots changed
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"platform-newer","actualState":"platform-newer","errorCode":null,"retryable":null,"requestId":"w7-02-platform-newer","idempotencyKey":null,"traceId":"trace-w7-02-platform-newer","sideEffectCount":0,"finalRevision":4,"finalConsistency":"newer-platform-revision-visible-before-explicit-accept"}
+[P6][PASS] W7-02 newer server revision is authoritative when local snapshot is unchanged
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"conflict","actualState":"conflict","errorCode":null,"retryable":null,"requestId":"w7-02-platform-newer-with-local-edit","idempotencyKey":null,"traceId":"trace-w7-02-conflict","sideEffectCount":0,"finalRevision":4,"finalConsistency":"newer-platform-does-not-silently-discard-local-edit"}
+[P6][PASS] W7-02 local edit plus newer server revision remains a conflict
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"clean","actualState":"clean","errorCode":null,"retryable":null,"requestId":"w7-02-platform-accepted","idempotencyKey":null,"traceId":"trace-w7-02-accepted","sideEffectCount":0,"finalRevision":4,"finalConsistency":"accepted-platform-snapshot-is-new-baseline"}
+[P6][PASS] W7-02 explicit platform acceptance establishes the newer revision baseline
+
+> awkn-marketing@0.1.0 test:p6:revision-w7-02
+> tsx scripts/p6-revision-w7-02.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"platform-newer","actualState":"platform-newer","errorCode":null,"retryable":null,"requestId":"w7-02-revision-only-platform-newer","idempotencyKey":null,"traceId":"trace-w7-02-revision-only","sideEffectCount":0,"finalRevision":4,"finalConsistency":"higher-server-revision-is-visible-even-when-content-matches"}
+[P6][PASS] W7-02 higher server revision alone is enough to mark platform-newer
+
+> awkn-marketing@0.1.0 test:p6:revision-w7-03
+> tsx scripts/p6-revision-w7-03.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"stale-platform","actualState":"stale-platform","errorCode":"INVALID_REVISION","retryable":false,"requestId":"w7-03-stale-platform-same-content","idempotencyKey":null,"traceId":"trace-w7-03-stale-same","sideEffectCount":0,"finalRevision":4,"finalConsistency":"known-baseline-revision-preserved"}
+[P6][PASS] W7-03 lower server revision is a stale-platform anomaly even when content matches
+[P6][FAULT-MATRIX] {"operation":"workspace.get","expectedState":"stale-platform","actualState":"stale-platform","errorCode":"INVALID_REVISION","retryable":false,"requestId":"w7-03-stale-platform-different-content","idempotencyKey":null,"traceId":"trace-w7-03-stale-different","sideEffectCount":0,"finalRevision":4,"finalConsistency":"stale-platform-content-cannot-be-accepted-or-written"}
+[P6][PASS] W7-03 lower server revision stays stale even when stale content differs
+[P6][PASS] W7-03 current or newer server revisions retain normal resolution paths
+
+> awkn-marketing@0.1.0 test:p6:concurrent-update
+> tsx scripts/p6-concurrent-update.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"one-success-one-revision-conflict","actualState":"1-success-1-conflict","errorCode":"REVISION_CONFLICT","retryable":false,"requestId":"w7-04-concurrent-r4","idempotencyKey":null,"traceId":"trace-w7-04-update-b-conflict","sideEffectCount":1,"finalRevision":5,"finalConsistency":"one-winner-no-silent-overwrite"}
+[P6][PASS] W7-04 concurrent updates from the same base revision produce one winner and one conflict
+
+> awkn-marketing@0.1.0 test:p6:stale-retry
+> tsx scripts/p6-stale-retry.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"same-key-retry-replays-existing-commit","actualState":"retry-success-r5","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"w7-05-same-key-retry","idempotencyKey":"workspace.update:w-p6-stale-retry:4:fp-same-logical-action","traceId":"trace-w7-05-retry-same-key-idempotent-replay","sideEffectCount":1,"finalRevision":5,"finalConsistency":"one-logical-write-after-unknown-first-result"}
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"stale-regenerated-key-rejected","actualState":"REVISION_CONFLICT","errorCode":"REVISION_CONFLICT","retryable":false,"requestId":"w7-05-stale-new-key","idempotencyKey":"workspace.update:w-p6-stale-retry:4:fp-regenerated-key","traceId":"trace-w7-05-stale-new-key-conflict","sideEffectCount":1,"finalRevision":5,"finalConsistency":"stale-retry-cannot-create-second-write"}
+[P6][PASS] W7-05 same-key retry recovers an already committed write without a second side effect
+
+> awkn-marketing@0.1.0 test:p6:request-timeout
+> tsx scripts/p6-request-timeout.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"timeout-with-unknown-upstream-outcome","actualState":"UPSTREAM_TIMEOUT","errorCode":"UPSTREAM_TIMEOUT","retryable":true,"requestId":"w7-06-timeout-before-commit","idempotencyKey":"workspace.update:w-p6-timeout:4:fp-timeout-before-commit","traceId":null,"sideEffectCount":0,"finalRevision":4,"finalConsistency":"no-success-or-failure-ack-fabricated"}
+[P6][PASS] W7-06 timeout before commit stays retryable with zero side effects
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"same-key-retry-recovers-timeout-commit","actualState":"retry-success-r5","errorCode":"UPSTREAM_TIMEOUT","retryable":true,"requestId":"w7-06-timeout-retry-same-key","idempotencyKey":"workspace.update:w-p6-timeout:4:fp-timeout-after-commit","traceId":"trace-w7-06-timeout-retry-same-key-timeout-replay","sideEffectCount":1,"finalRevision":5,"finalConsistency":"one-logical-write-after-timeout-unknown-result"}
+[P6][PASS] W7-06 timeout after commit recovers with same idempotency key and one logical side effect
+
+> awkn-marketing@0.1.0 test:p6:upstream-5xx
+> tsx scripts/p6-upstream-5xx.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"retryable-upstream-unavailable","actualState":"UPSTREAM_UNAVAILABLE","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-07-malformed-503","idempotencyKey":"workspace.update:w-p6-5xx:4:fp-6461d131","traceId":"trace-w7-07-malformed-503","sideEffectCount":0,"finalRevision":4,"finalConsistency":"malformed-5xx-cannot-fabricate-success"}
+[P6][PASS] W7-07 malformed upstream 503 maps to retryable UPSTREAM_UNAVAILABLE and preserves header trace
+[P6][PASS] W7-07 HTTP 5xx rejects an upstream ok=true success envelope
+[P6][PASS] W7-07 unknown vendor 500 code is normalized into the stable product taxonomy
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"same-key-retry-recovers-existing-ack","actualState":"recovered-r5","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-07-retry","idempotencyKey":"workspace.update:w-p6-5xx:4:fp-6461d131","traceId":"trace-w7-07-replay","sideEffectCount":1,"finalRevision":5,"finalConsistency":"one-logical-write-after-upstream-5xx"}
+[P6][PASS] W7-07 commit-before-500 same-key retry recovers one logical write
+
+> awkn-marketing@0.1.0 test:p6:rate-limit
+> tsx scripts/p6-rate-limit.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"retryable-rate-limited","actualState":"RATE_LIMITED","errorCode":"RATE_LIMITED","retryable":true,"requestId":"req-w7-08-rate-limit","idempotencyKey":"workspace.update:w-p6-rate-limit:4:fp-25e166ae","traceId":"trace-w7-08-rate-limit","sideEffectCount":0,"finalRevision":4,"finalConsistency":"rate-limit-does-not-create-local-success"}
+[P6][PASS] W7-08 HTTP 429 maps to retryable RATE_LIMITED and preserves trace plus Retry-After
+[P6][PASS] W7-08 malformed 429 and false-success 429 cannot escape RATE_LIMITED semantics
+[P6][PASS] W7-08 unsafe Retry-After values are not relayed
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"same-key-retry-after-rate-limit","actualState":"recovered-r5","errorCode":"RATE_LIMITED","retryable":true,"requestId":"req-w7-08-retry","idempotencyKey":"workspace.update:w-p6-rate-limit:4:fp-25e166ae","traceId":"trace-w7-08-retry","sideEffectCount":1,"finalRevision":5,"finalConsistency":"one-logical-write-after-rate-limit"}
+[P6][PASS] W7-08 same logical retry preserves idempotency key and produces one logical write after rate limit
+
+> awkn-marketing@0.1.0 test:p6:malformed-json
+> tsx scripts/p6-malformed-json.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"malformed-json-failure","actualState":"UNKNOWN_UPSTREAM_ERROR","errorCode":"UNKNOWN_UPSTREAM_ERROR","retryable":true,"requestId":"req-w7-09-json-0","idempotencyKey":"workspace.update:w-p6-malformed-json:4:fp-malformed-json","traceId":"trace-w7-09-json-0","sideEffectCount":0,"finalRevision":4,"finalConsistency":"malformed-json-cannot-project-success"}
+[P6][PASS] W7-09 truncated JSON maps to stable malformed JSON failure
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"malformed-json-failure","actualState":"UNKNOWN_UPSTREAM_ERROR","errorCode":"UNKNOWN_UPSTREAM_ERROR","retryable":true,"requestId":"req-w7-09-json-1","idempotencyKey":"workspace.update:w-p6-malformed-json:4:fp-malformed-json","traceId":"trace-w7-09-json-1","sideEffectCount":0,"finalRevision":4,"finalConsistency":"malformed-json-cannot-project-success"}
+[P6][PASS] W7-09 HTML error page with 200 maps to stable malformed JSON failure
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"malformed-json-failure","actualState":"UNKNOWN_UPSTREAM_ERROR","errorCode":"UNKNOWN_UPSTREAM_ERROR","retryable":true,"requestId":"req-w7-09-json-2","idempotencyKey":"workspace.update:w-p6-malformed-json:4:fp-malformed-json","traceId":"trace-w7-09-json-2","sideEffectCount":0,"finalRevision":4,"finalConsistency":"malformed-json-cannot-project-success"}
+[P6][PASS] W7-09 empty body maps to stable malformed JSON failure
+
+> awkn-marketing@0.1.0 test:p6:adapter-http-failure
+> tsx scripts/p6-adapter-http-failure.ts
+
+[P6][FAULT-MATRIX] {"operation":"task.run","expectedState":"transport-failure-fail-closed","actualState":"UPSTREAM_UNAVAILABLE","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-agent-false-success-5xx","idempotencyKey":"task:task-p6-adapter-http:run:action-bea7b817","traceId":"trace-agent-false-success-5xx","sideEffectCount":1,"finalRevision":null,"finalConsistency":"agent-5xx-success-envelope-not-projected"}
+[P6][PASS] audit: agent HTTP 5xx cannot project a valid ok=true result
+[P6][PASS] audit: agent HTTP 429 cannot project a valid ok=true result
+[P6][FAULT-MATRIX] {"operation":"material.upload","expectedState":"transport-failure-fail-closed","actualState":"MATERIAL_UPLOAD_UPSTREAM_UNAVAILABLE","errorCode":"MATERIAL_UPLOAD_UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-material-false-success-5xx","idempotencyKey":"material.upload:material-p6-adapter-http:20:adapter.txt","traceId":"trace-material-false-success-5xx","sideEffectCount":1,"finalRevision":null,"finalConsistency":"material-5xx-success-ack-not-projected"}
+[P6][PASS] audit: material upload HTTP 5xx cannot project a valid ok=true Ack
+[P6][PASS] audit: material upload HTTP 429 cannot project a valid ok=true Ack
+
+> awkn-marketing@0.1.0 test:p6:malformed-success
+> tsx scripts/p6-malformed-success.ts
+
+[P6][FAULT-MATRIX] {"operation":"material.parse.get","expectedState":"malformed-success-payload-rejected","actualState":"VALIDATION_ERROR","errorCode":"VALIDATION_ERROR","retryable":false,"requestId":"req-w7-10-invalid-0","idempotencyKey":null,"traceId":"trace-w7-10-invalid-0","sideEffectCount":0,"finalRevision":3,"finalConsistency":"invalid-material-state-cannot-project-success"}
+[P6][PASS] W7-10 missing parse status cannot enter product projection
+[P6][FAULT-MATRIX] {"operation":"material.parse.get","expectedState":"malformed-success-payload-rejected","actualState":"VALIDATION_ERROR","errorCode":"VALIDATION_ERROR","retryable":false,"requestId":"req-w7-10-invalid-1","idempotencyKey":null,"traceId":"trace-w7-10-invalid-1","sideEffectCount":0,"finalRevision":3,"finalConsistency":"invalid-material-state-cannot-project-success"}
+[P6][PASS] W7-10 unknown parse status cannot enter product projection
+[P6][FAULT-MATRIX] {"operation":"material.parse.get","expectedState":"malformed-success-payload-rejected","actualState":"VALIDATION_ERROR","errorCode":"VALIDATION_ERROR","retryable":false,"requestId":"req-w7-10-invalid-2","idempotencyKey":null,"traceId":"trace-w7-10-invalid-2","sideEffectCount":0,"finalRevision":3,"finalConsistency":"invalid-material-state-cannot-project-success"}
+[P6][PASS] W7-10 non-text parse status cannot enter product projection
+[P6][PASS] W7-10 supported material parse state 1 remains valid
+[P6][PASS] W7-10 supported material parse state 2 remains valid
+[P6][PASS] W7-10 supported material parse state 3 remains valid
+[P6][PASS] W7-10 supported material parse state 4 remains valid
+[P6][PASS] W7-10 supported material parse state 5 remains valid
+
+> awkn-marketing@0.1.0 test:p6:missing-entity-ack
+> tsx scripts/p6-missing-entity-ack.ts
+
+[P6][PASS] W7-11 missing entity_id is a stable MISSING_ENTITY_ACK
+[P6][PASS] W7-11 missing data envelope is a stable MISSING_ENTITY_ACK
+[P6][PASS] W7-11 incomplete Ack fields remain fail-closed
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"missing-entity-ack-rejected","actualState":"MISSING_ENTITY_ACK","errorCode":"MISSING_ENTITY_ACK","retryable":false,"requestId":"req-w7-11-route","idempotencyKey":"workspace.update:w-p6-missing-ack:4:fp-missing-ack","traceId":"trace-w7-11-route","sideEffectCount":0,"finalRevision":4,"finalConsistency":"missing-ack-cannot-project-success"}
+[P6][PASS] W7-11 HTTP 200 with missing entity Ack becomes product-boundary 502
+
+> awkn-marketing@0.1.0 test:p6:identity-mismatch
+> tsx scripts/p6-identity-mismatch.ts
+
+[P6][PASS] W7-12 persistent Ack identity mismatch fails closed
+[P6][PASS] W7-12 entity-read snapshot identity mismatch fails closed
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"identity-mismatch-rejected","actualState":"IDENTITY_MISMATCH","errorCode":"IDENTITY_MISMATCH","retryable":false,"requestId":"req-w7-12-route","idempotencyKey":"workspace.update:w-p6-identity:7:fp-identity-mismatch","traceId":"trace-w7-12-route","sideEffectCount":0,"finalRevision":7,"finalConsistency":"wrong-entity-cannot-project-success"}
+[P6][PASS] W7-12 HTTP 200 wrong entity becomes product-boundary 502
+
+> awkn-marketing@0.1.0 test:p6:duplicate-submit
+> tsx scripts/p6-duplicate-submit.ts
+
+[P6][FAULT-MATRIX] {"operation":"feedback.record","expectedState":"duplicate-submit-one-logical-append","actualState":"one-event-r1","errorCode":null,"retryable":null,"requestId":"req-w7-13-submit-a|req-w7-13-submit-b","idempotencyKey":"feedback.record:feedback-event:task-p6-duplicate-submit:fp-9c38b465","traceId":"trace-w7-13-duplicate-submit","sideEffectCount":1,"finalRevision":1,"finalConsistency":"two-requests-one-stable-feedback-event"}
+[P6][PASS] W7-13 concurrent duplicate submit keeps one logical append
+
+> awkn-marketing@0.1.0 test:p6:duplicate-retry
+> tsx scripts/p6-duplicate-retry.ts
+
+[P6][FAULT-MATRIX] {"operation":"feedback.record","expectedState":"same-key-retry-recovers-uncertain-append","actualState":"retry-recovers-event-r1","errorCode":"UPSTREAM_TIMEOUT","retryable":true,"requestId":"req-w7-14-first|req-w7-14-retry","idempotencyKey":"feedback.record:feedback-event:task-p6-duplicate-retry:fp-02ab57d5","traceId":"trace-w7-14-replay","sideEffectCount":1,"finalRevision":1,"finalConsistency":"timeout-retry-one-stable-feedback-event"}
+[P6][PASS] W7-14 retry after uncertain commit reuses one logical feedback append
+
+> awkn-marketing@0.1.0 test:p6:active-session-revoke
+> tsx scripts/p6-active-session-revoke.ts
+
+[P6][PASS] active session grant can become stale before the next product action
+[P6][PASS] server-side revoke denies stale-session write with zero side effect
+[P6][PASS] authorization denial uses invalidation routing while routine refresh stays non-destructive
+[P6][PASS] authorization invalidation suspends protected projection before revalidation completes
+[P6][PASS] refreshed session removes revoked visible projection
+[P6][PASS] refreshed session removes revoked Experience from matching
+[P6][PASS] refreshed session removes revoked Learning watch and run projections
+
+> awkn-marketing@0.1.0 test:p6:dependency-unavailable
+> tsx scripts/p6-dependency-unavailable.ts
+
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"temporary-dependency-outage-recovers-on-same-key-retry","actualState":"recovered-r5","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-product-retry","idempotencyKey":"workspace.update:w-p6-dependency-unavailable:4:fp-w7-16-product","traceId":"trace-w7-16-product-recovered","sideEffectCount":1,"finalRevision":5,"finalConsistency":"product-dependency-recovery-preserves-stable-write-identity"}
+[P6][PASS] W7-16 product dependency connection failure is retryable and recovers with the same key
+[P6][FAULT-MATRIX] {"operation":"task.run","expectedState":"temporary-agent-outage-recovers-with-same-logical-action","actualState":"agent-run-recovered","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-agent-retry","idempotencyKey":"task:task-p6-dependency-unavailable:run:action-ef8964d0","traceId":"trace-w7-16-agent-recovered","sideEffectCount":1,"finalRevision":null,"finalConsistency":"agent-dependency-recovery-keeps-logical-action-idempotent"}
+[P6][PASS] W7-16 agent dependency connection failure is retryable and preserves logical action identity
+[P6][FAULT-MATRIX] {"operation":"material.upload","expectedState":"temporary-material-outage-recovers-with-same-upload-key","actualState":"material-upload-recovered-r1","errorCode":"MATERIAL_UPLOAD_UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-material-retry","idempotencyKey":"material.upload:material-p6-dependency-unavailable:19:dependency.txt","traceId":"trace-w7-16-material-recovered","sideEffectCount":1,"finalRevision":1,"finalConsistency":"material-dependency-recovery-preserves-stable-upload-identity"}
+[P6][PASS] W7-16 material dependency connection failure is retryable and preserves upload identity
+
+> awkn-marketing@0.1.0 test:p6:dependency-unavailable-learning
+> tsx scripts/p6-dependency-unavailable-learning.ts
+
+[P6][PASS] W7-16 learning UI retry starts a fresh physical-attempt lifecycle
+[P6][PASS] W7-16 newer learning attempt cannot inherit prior signals or trace
+[P6][PASS] W7-16 same-attempt failed snapshot preserves existing failure evidence
+[P6][FAULT-MATRIX] {"operation":"learning.run.retry","expectedState":"temporary-learning-outage-preserves-state-until-same-attempt-retry-recovers","actualState":"attempt-2-running","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-learning-retry","idempotencyKey":"learning.run.retry:learning-run-w7-16:attempt:2","traceId":"trace-w7-16-learning-recovered","sideEffectCount":1,"finalRevision":2,"finalConsistency":"learning-retry-keeps-run-id-attempt-status-and-lifecycle-truth"}
+[P6][PASS] W7-16 learning retry preserves attempt and state truth across temporary dependency outage
+
+> awkn-marketing@0.1.0 test:p6:workspace
+> tsx scripts/p6-workspace.ts
+
+[P6][PASS] workspace create payload identity must match top-level workspace_id
+[P6][PASS] workspace update requires a positive base revision and stable identity
+[P6][PASS] workspace get reads the same stable entity identity
+[P6][PASS] same workspace create idempotency key yields one logical upstream side effect
+[P6][PASS] workspace create rejects an upstream identity mismatch before UI projection
+[P6][PASS] workspace update preserves upstream stale revision conflict
+[P6][PASS] workspace get accepts real read shape and blocks wrong server entity id
+
+> awkn-marketing@0.1.0 test:p6:material
+> tsx scripts/p6-material.ts
+
+[P6][PASS] material product requests preserve one stable material identity
+[P6][PASS] material.feed blocks upstream identity mismatch before projection
+[P6][PASS] material.parse.get projects parsed text evidence revision and trace
+[P6][PASS] material parse failure remains visible and recoverable after successful status read
+[P6][PASS] material.parse.retry reuses the logical material and same-key retry yields one logical run
+[P6][PASS] binary upload forwards stable material id request id and deterministic idempotency key
+[P6][PASS] upload success and parse failure remain separate states
+[P6][PASS] binary upload rejects missing id identity mismatch and missing revision
+[P6][PASS] revoked workspace binary upload is denied without success projection
+[P6][PASS] binary upload maps abort to retryable timeout
+[P6][PASS] binary upload enforces configured file-size limit before upstream side effect
+
+> awkn-marketing@0.1.0 test:p6:task
+> tsx scripts/p6-task.ts
+
+[P6][PASS] task status is a stable product enum
+[P6][PASS] task create binds task identity, workspace scope and stable status
+[P6][PASS] task update requires positive base revision
+[P6][PASS] task get requires the same stable task identity
+[P6][PASS] same task create idempotency key yields one logical upstream side effect
+[P6][PASS] task update preserves stale revision conflict and trace
+[P6][PASS] task get validates remote workspace scope and status before projection
+
+> awkn-marketing@0.1.0 test:p6:task-execution
+> tsx scripts/p6-task-execution.ts
+
+[P6][PASS] task execution has stable identity, status and physical attempt
+[P6][PASS] task execution get and upsert bind task/workspace/execution identity
+[P6][PASS] task execution upsert is revision-aware while allowing first create
+[P6][PASS] queued snapshot ordering keeps only the latest local edit
+[P6][PASS] same execution upsert key produces one logical upstream side effect
+[P6][PASS] task execution preserves revision conflict and trace
+[P6][PASS] task execution get validates remote identity, scope, status and attempt
+
+> awkn-marketing@0.1.0 test:p6:task-execution-projection
+> tsx scripts/p6-task-execution-projection.ts
+
+[P6][PASS] artifact edits preserve accepted execution lifecycle fields
+
+> awkn-marketing@0.1.0 test:p6:agent
+> tsx scripts/p6-agent.ts
+
+[P6][PASS] applied experience and material context identities stay stable across agent retries
+[P6][PASS] agent material projection carries platform revision into logical context
+[P6][PASS] agent input fails closed on revoked workspace context and unsupported side effects
+[P6][PASS] task.run canonicalizes context identity and projects traceable agent result
+[P6][PASS] same logical task.run retry preserves one logical run
+[P6][PASS] changed material revision receives a new logical run identity
+[P6][PASS] agent result blocks identity mismatch, missing run id and unsupported side effects
+[P6][PASS] agent timeout is retryable with the same logical action
+
+> awkn-marketing@0.1.0 test:p6:feedback
+> tsx scripts/p6-feedback.ts
+
+[P6][PASS] feedback disposition stays within the product enum
+[P6][PASS] feedback event keeps stable identity and AI Draft/User Final association
+[P6][PASS] feedback request rejects identity, edit count and idempotency drift
+[P6][PASS] duplicate feedback submit uses one logical append side effect
+[P6][PASS] feedback ack enforces stable event identity and preserves trace
+
+> awkn-marketing@0.1.0 test:p6:outcome
+> tsx scripts/p6-outcome.ts
+
+[P6][PASS] outcome taxonomy is versioned and preserves pending/unknown/observed truth
+[P6][PASS] outcome event keeps stable identity and execution projection consistency
+[P6][PASS] explicit unknown outcome remains unknown and creates no fake observed state
+[P6][PASS] outcome request rejects identity, taxonomy, state, reason, evidence and idempotency drift
+[P6][PASS] duplicate outcome submit uses one logical append side effect
+[P6][PASS] outcome ack enforces stable event identity and preserves trace
+
+> awkn-marketing@0.1.0 test:p6:learning
+> tsx scripts/p6-learning.ts
+
+[P6][PASS] learning watch uses stable identity and state-derived idempotency
+[P6][PASS] duplicate learning watch upsert produces one logical side effect
+[P6][PASS] learning run requires stable logical action idempotency and preserves run identity
+[P6][PASS] learning retry keeps logical run id and increments physical attempt
+[P6][PASS] learning state rejects unknown status and preserves signal source and trace
+[P6][PASS] learning merge rejects stale retry snapshots
+[P6][PASS] revoked workspace removes learning visibility and action eligibility
+
+> awkn-marketing@0.1.0 test:p6:evolution
+> tsx scripts/p6-evolution.ts
+
+[P6][PASS] candidate keeps stable id, evidence chain and monotonic revision
+[P6][PASS] negative candidate preserves Counterexample semantics
+[P6][PASS] evolution review validates candidate evidence, scope, revision and idempotency
+[P6][PASS] duplicate evolution review uses one logical side effect and stable review identity
+[P6][PASS] stale review conflict is preserved and success ack must advance revision
+[P6][PASS] only reviewed current candidate revision enters next task matching
+[P6][PASS] revoked workspace candidate cannot be reused
+
+> awkn-marketing@0.1.0 test:p6:integration
+> tsx scripts/p6-integration-config.ts
+
+[P6][PASS] integration data scope is explicit
+[P6][SKIP] real AWKN integration disabled; set AWKN_P6_INTEGRATION=true in a server-side integration environment.
+
+> awkn-marketing@0.1.0 test:p6:ci-guard
+> tsx scripts/p6-ci-guard.ts
+
+[P6][PASS] CI does not contain obvious secret-print commands
+EXIT_CODE: 0
+DURATION_SEC: 41
+
+───── build ─────
+$ npm run build
+
+> awkn-marketing@0.1.0 build
+> next build
+
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 1304ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 66s
+  Running TypeScript ...
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/dev/types/**/*.ts'
+
+  Finished TypeScript in 17.0s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/10) ...
+  Generating static pages using 1 worker (2/10) 
+  Generating static pages using 1 worker (4/10) 
+  Generating static pages using 1 worker (7/10) 
+✓ Generating static pages using 1 worker (10/10) in 1281ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/agent
+├ ƒ /api/material-upload
+├ ƒ /api/product
+├ ƒ /api/session
+├ ƒ /api/status
+├ ○ /assistant
+├ ○ /evolution
+├ ƒ /tasks/[id]
+├ ○ /today
+├ ○ /workspaces
+└ ƒ /workspaces/[id]
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+EXIT_CODE: 0
+DURATION_SEC: 106
+
+───── focused:W7O active-session-revoke ─────
+$ npx tsx scripts/p6-active-session-revoke.ts
+[P6][PASS] active session grant can become stale before the next product action
+[P6][PASS] server-side revoke denies stale-session write with zero side effect
+[P6][PASS] authorization denial uses invalidation routing while routine refresh stays non-destructive
+[P6][PASS] authorization invalidation suspends protected projection before revalidation completes
+[P6][PASS] refreshed session removes revoked visible projection
+[P6][PASS] refreshed session removes revoked Experience from matching
+[P6][PASS] refreshed session removes revoked Learning watch and run projections
+EXIT_CODE: 0
+DURATION_SEC: 2
+
+───── focused:W7P dependency-unavailable ─────
+$ npx tsx scripts/p6-dependency-unavailable.ts
+[P6][FAULT-MATRIX] {"operation":"workspace.update","expectedState":"temporary-dependency-outage-recovers-on-same-key-retry","actualState":"recovered-r5","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-product-retry","idempotencyKey":"workspace.update:w-p6-dependency-unavailable:4:fp-w7-16-product","traceId":"trace-w7-16-product-recovered","sideEffectCount":1,"finalRevision":5,"finalConsistency":"product-dependency-recovery-preserves-stable-write-identity"}
+[P6][PASS] W7-16 product dependency connection failure is retryable and recovers with the same key
+[P6][FAULT-MATRIX] {"operation":"task.run","expectedState":"temporary-agent-outage-recovers-with-same-logical-action","actualState":"agent-run-recovered","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-agent-retry","idempotencyKey":"task:task-p6-dependency-unavailable:run:action-ef8964d0","traceId":"trace-w7-16-agent-recovered","sideEffectCount":1,"finalRevision":null,"finalConsistency":"agent-dependency-recovery-keeps-logical-action-idempotent"}
+[P6][PASS] W7-16 agent dependency connection failure is retryable and preserves logical action identity
+[P6][FAULT-MATRIX] {"operation":"material.upload","expectedState":"temporary-material-outage-recovers-with-same-upload-key","actualState":"material-upload-recovered-r1","errorCode":"MATERIAL_UPLOAD_UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-material-retry","idempotencyKey":"material.upload:material-p6-dependency-unavailable:19:dependency.txt","traceId":"trace-w7-16-material-recovered","sideEffectCount":1,"finalRevision":1,"finalConsistency":"material-dependency-recovery-preserves-stable-upload-identity"}
+[P6][PASS] W7-16 material dependency connection failure is retryable and preserves upload identity
+EXIT_CODE: 0
+DURATION_SEC: 1
+
+───── focused:W7P dependency-unavailable-learning ─────
+$ npx tsx scripts/p6-dependency-unavailable-learning.ts
+[P6][PASS] W7-16 learning UI retry starts a fresh physical-attempt lifecycle
+[P6][PASS] W7-16 newer learning attempt cannot inherit prior signals or trace
+[P6][PASS] W7-16 same-attempt failed snapshot preserves existing failure evidence
+[P6][FAULT-MATRIX] {"operation":"learning.run.retry","expectedState":"temporary-learning-outage-preserves-state-until-same-attempt-retry-recovers","actualState":"attempt-2-running","errorCode":"UPSTREAM_UNAVAILABLE","retryable":true,"requestId":"req-w7-16-learning-retry","idempotencyKey":"learning.run.retry:learning-run-w7-16:attempt:2","traceId":"trace-w7-16-learning-recovered","sideEffectCount":1,"finalRevision":2,"finalConsistency":"learning-retry-keeps-run-id-attempt-status-and-lifecycle-truth"}
+[P6][PASS] W7-16 learning retry preserves attempt and state truth across temporary dependency outage
+EXIT_CODE: 0
+DURATION_SEC: 2
+
+───── focused:W4C-RV1 p6-agent ─────
+$ npx tsx scripts/p6-agent.ts
+[P6][PASS] applied experience and material context identities stay stable across agent retries
+[P6][PASS] agent material projection carries platform revision into logical context
+[P6][PASS] agent input fails closed on revoked workspace context and unsupported side effects
+[P6][PASS] task.run canonicalizes context identity and projects traceable agent result
+[P6][PASS] same logical task.run retry preserves one logical run
+[P6][PASS] changed material revision receives a new logical run identity
+[P6][PASS] agent result blocks identity mismatch, missing run id and unsupported side effects
+[P6][PASS] agent timeout is retryable with the same logical action
+EXIT_CODE: 0
+DURATION_SEC: 1
+

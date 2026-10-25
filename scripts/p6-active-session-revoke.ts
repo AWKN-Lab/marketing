@@ -14,31 +14,12 @@ import {
   signalMarketingSessionRefresh,
   signalMarketingSessionRefreshForProductError,
 } from "../lib/product-session.ts";
-import { runP6Case } from "./p6-test-support.ts";
+import { runP6Case, withCapabilityUpstream as withProductUpstream } from "./p6-test-support.ts";
 
 const WORKSPACE_REVOKED = "w-w7-active-revoked";
 const WORKSPACE_VISIBLE = "w-w7-visible";
 const TASK_ID = "task-w7-active-revoke";
 
-type UpstreamResponder = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-async function withProductUpstream<T>(responder: UpstreamResponder, run: () => Promise<T>): Promise<T> {
-  const previousEndpoint = process.env.AWKN_MARKETING_API_URL;
-  const previousToken = process.env.AWKN_MARKETING_API_TOKEN;
-  const previousFetch = globalThis.fetch;
-  process.env.AWKN_MARKETING_API_URL = "https://product.integration.invalid";
-  process.env.AWKN_MARKETING_API_TOKEN = "service-secret";
-  globalThis.fetch = responder as typeof fetch;
-  try {
-    return await run();
-  } finally {
-    if (typeof previousEndpoint === "undefined") delete process.env.AWKN_MARKETING_API_URL;
-    else process.env.AWKN_MARKETING_API_URL = previousEndpoint;
-    if (typeof previousToken === "undefined") delete process.env.AWKN_MARKETING_API_TOKEN;
-    else process.env.AWKN_MARKETING_API_TOKEN = previousToken;
-    globalThis.fetch = previousFetch;
-  }
-}
 
 function session(grants: Array<{ workspace_id: string; access: "read" | "write" | "admin" }>) {
   const value = normalizeMarketingSession({
@@ -133,8 +114,10 @@ async function main() {
     const result = await withProductUpstream(async (_input, init) => {
       upstreamAttempts += 1;
       const headers = new Headers(init?.headers);
+      // 能力服务用服务令牌 + 平台 Session 头鉴权；浏览器身份不再向平台侧转发。
       assert.equal(headers.get("authorization"), "Bearer service-secret");
-      assert.equal(headers.get("x-awkn-user-authorization"), "Bearer actor-token");
+      assert.ok(headers.get("x-awkn-session"), "能力调用必须带 x-awkn-session 头");
+      assert.equal(headers.get("x-awkn-user-authorization"), null);
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
       assert.equal(body.workspace_id, WORKSPACE_REVOKED);
 

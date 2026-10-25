@@ -7,6 +7,8 @@ import { useProductSession } from "@/components/product-session-provider";
 import {
   EVOLUTION_REVIEWS_KEY,
   LOCAL_CANDIDATES_KEY,
+  buildPatternCandidates,
+  patternEligibleSamples,
   candidateRevision,
   evolutionCandidateReadyForReview,
   reviewDecisionForCandidate,
@@ -19,19 +21,88 @@ import {
   evolutionReviewIdempotencyKey,
   type EvolutionReviewDecision,
 } from "@/lib/evolution-contract";
+import { readPersistedValue } from "@/lib/persistence";
+import { PATTERN_MIN_SUPPORT, type PatternSample } from "@/lib/pattern-detection";
+import { callPatternDetect } from "@/lib/pattern-client";
 import { canMarketingAction, filterReadableWorkspaceItems } from "@/lib/product-session";
 import { readSyncRecord, syncMarketingProduct } from "@/lib/sync-store";
-import type { EvolutionCandidate } from "@/lib/types";
+import { LOCAL_TASKS_KEY } from "@/lib/task-store";
+import type { EvolutionCandidate, MarketingTask } from "@/lib/types";
 import { usePersistedState } from "@/lib/use-persisted-state";
 
 export function EvolutionReview({ candidates }: { candidates: EvolutionCandidate[] }) {
   const session = useProductSession();
   const [states, setStates] = usePersistedState<Record<string, EvolutionReviewValue>>(EVOLUTION_REVIEWS_KEY, {});
-  const [localCandidates] = usePersistedState<LocalEvolutionCandidate[]>(LOCAL_CANDIDATES_KEY, []);
-  const [messages, setMessages] = useState<Record<string, string>>({});
+  const [localCandidates, setLocalCandidates] = usePersistedState<LocalEvolutionCandidate[]>(LOCAL_CANDIDATES_KEY, []);
+  const [tasks] = usePersistedState<MarketingTask[]>(LOCAL_TASKS_KEY, []);
+  const [messages, setMessages] = usePersistedState<Record<string, string>>("marketing:evolution:pattern-messages", {});
+  const [patternMessage, setPatternMessage] = useState("");
   const visibleLocal = filterReadableWorkspaceItems(session, localCandidates, (candidate) => candidate.workspaceId ?? "");
   const hasRealCandidates = visibleLocal.length > 0;
   const allCandidates: EvolutionCandidate[] = hasRealCandidates ? visibleLocal : candidates;
+
+  /**
+   * 跨任务重复模式：把已确认任务的同向信号聚合成可审核的 Pattern Candidate。
+   *
+   * 平台模式由 AWKN OS 营销插件（`marketing.pattern.detect`）计算 —— 产品层只送样本、收结果；
+   * 本地模式没有平台，由 `lib/pattern-detection.ts` 作为离线回退承担。
+   * 两条路径必须给出同一个 patternId，否则平台与本地认不出同一个模式。
+   */
+  async function detectCrossTaskPatterns() {
+    const taskById = new Map(tasks.map((task) => [task.id, task]));
+    const samples: PatternSample[] = [];
+    for (const candidate of visibleLocal) {
+      if (!evolutionCandidateReadyForReview(candidate)) continue;
+      // 模式候选本身不参与模式形成，避免自举放大。
+      if (candidate.evidence?.pattern_evidence) continue;
+      // 用户已经否决的方法不得再影响下一次模式判断。
+      if (reviewDecisionForCandidate(states[candidate.id], candidate) === "rejected") continue;
+      const task = taskById.get(candidate.taskId);
+      if (!task) continue;
+      samples.push({
+        taskId: candidate.taskId,
+        workspaceId: candidate.workspaceId ?? "",
+        taskType: candidate.sourceTaskType ?? task.type,
+        feedback: readPersistedValue<string | null>(`marketing:${candidate.taskId}:feedback`, null),
+        outcome: readPersistedValue<string | null>(`marketing:${candidate.taskId}:outcome`, null),
+        editCount: task.artifact.aiDraft.split("\n").filter(Boolean).length,
+        aiDraft: candidate.evidence?.ai_draft ?? "",
+        userFinal: candidate.evidence?.user_final ?? "",
+        completedAt: candidate.createdAt,
+        feedbackEventId: candidate.evidence?.feedback_event_id,
+        outcomeEventId: candidate.evidence?.outcome_event_id,
+        evidenceRefs: candidate.evidence?.evidence_refs,
+        runId: candidate.evidence?.run_id,
+        traceId: candidate.evidence?.trace_id,
+      });
+    }
+
+    const eligible = patternEligibleSamples(samples);
+    let detected: LocalEvolutionCandidate[];
+    if (session.mode === "platform") {
+      const response = await callPatternDetect({
+        workspaceId: samples[0]?.workspaceId,
+        samples: eligible,
+        requestId: `pattern-detect-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      });
+      if (!response.ok) {
+        setPatternMessage(`平台模式检测未成功：${response.error?.message ?? "unknown error"}`);
+        return;
+      }
+      detected = buildPatternCandidates({ samples, previous: localCandidates, patterns: response.data?.patterns ?? [] });
+    } else {
+      detected = buildPatternCandidates({ samples, previous: localCandidates });
+    }
+    if (!detected.length) {
+      setPatternMessage(`未检测到重复模式。至少需要同一 Workspace、同类型任务各 ${PATTERN_MIN_SUPPORT} 次出现同向信号。`);
+      return;
+    }
+    setLocalCandidates((current) => {
+      const incoming = new Map(detected.map((candidate) => [candidate.id, candidate]));
+      return [...detected, ...current.filter((candidate) => !incoming.has(candidate.id))];
+    });
+    setPatternMessage(`已生成 ${detected.length} 条跨任务重复模式候选，等待人工审核后才进入经验匹配。`);
+  }
 
   async function review(candidate: LocalEvolutionCandidate, decision: EvolutionReviewDecision) {
     if (!candidate.workspaceId || !evolutionCandidateReadyForReview(candidate)) return;
@@ -97,9 +168,17 @@ export function EvolutionReview({ candidates }: { candidates: EvolutionCandidate
     {hasRealCandidates
       ? <div className="evolution-notice"><span className="pulse" /><div><strong>这些候选来自当前可访问的真实任务</strong><p>审核需要 evolution.review + Workspace write Grant；平台确认后才进入经验匹配。</p></div></div>
       : <div className="demo-notice"><strong>当前没有可访问的真实 Candidate</strong><p>Demo 仅用于理解界面，不参与后续经验匹配。</p></div>}
+    {hasRealCandidates
+      ? <div className="stack-md">
+          <div className="row gap-sm">
+            <button className="button secondary" onClick={() => void detectCrossTaskPatterns()}>从已确认任务检测重复模式</button>
+            <span className="muted small">{patternMessage || "跨任务重复模式是 PRD §21.1 的第三类学习源；单次修改不会自动上升为普遍经验。"}</span>
+          </div>
+        </div>
+      : null}
     <section className="stack-md">
       {allCandidates.map((candidate) => {
-        const isReal = candidate.id.startsWith("local-ev-");
+        const isReal = candidate.id.startsWith("local-ev");
         const local = candidate as LocalEvolutionCandidate;
         const ready = isReal && evolutionCandidateReadyForReview(local);
         const canReview = Boolean(ready && local.workspaceId && canMarketingAction(session, "evolution.review", local.workspaceId, "write"));
